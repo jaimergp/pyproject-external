@@ -3,11 +3,12 @@ requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
-name = "external-metadata-mappings"
-version = "0.1.0"
-description = "Schemas and APIs for PEP 725 External Metadata Mappings"
+name = "pyproject-external"
+version = "0.0.1"
+description = "Utilities to work with PEP 725 `[external]` metadata"
 readme = "README.md"
 authors = [
+  { name = "Ralf Gommers", email = "rgommers@quansight.com" },
   { name = "Jaime Rodríguez-Guerra", email = "jrodriguez@quansight.com" },
 ]
 license = { file = "LICENSE" }
@@ -26,32 +27,23 @@ requires-python = ">=3.10"
 dependencies = [
   "requests",
   "jsonschema",
+  "pypi_json",
+  "distro",
+  "rich",
+  "typer",
   "packaging",
   "packageurl-python==0.16.0"
 ]
 
 [project.urls]
-homepage = "https://github.com/jaimergp/external-metadata-mappings"
+homepage = "https://github.com/jaimergp/pyproject-external"
 
 [tool.pixi.project]
 channels = ["conda-forge"]
 platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
 
-[tool.pixi.dependencies]
-packageurl-python = "==0.16.0"
-
 [tool.pixi.pypi-dependencies]
-external-metadata-mappings = { path = ".", editable = true }
-
-[tool.pixi.feature.schemas.dependencies]
-pydantic = ">=2"
-[tool.pixi.feature.schemas.tasks]
-schemas = "python schemas/schemas.py"
-
-[tool.pixi.feature.streamlit.dependencies]
-streamlit = "*"
-[tool.pixi.feature.streamlit.tasks]
-app = "python -m streamlit run --server.runOnSave=true app.py"
+pyproject-external = { path = ".", editable = true }
 
 [tool.pixi.feature.pre-commit.dependencies]
 pre-commit = "*"
@@ -78,6 +70,4 @@ test-py310 = ["test", "py310"]
 test-py311 = ["test", "py311"]
 test-py312 = ["test", "py312"]
 test-py313 = ["test", "py313"]
-streamlit = ["streamlit"]
-schemas = ["schemas"]
 pre-commit = ["pre-commit"]

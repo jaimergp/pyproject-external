@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2023 Quansight Labs
+
 import logging
 import shlex
 import tarfile
