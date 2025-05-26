@@ -14,7 +14,7 @@ import typer
 from rich import print as rprint
 from rich.console import Console
 from rich.logging import RichHandler
-from external_metadata_mappings import Ecosystems, Registry, Mapping
+from ._registry import Ecosystems, Registry, Mapping
 
 
 HERE = Path(__file__).parent

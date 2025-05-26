@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2025 Quansight Labs
+
 """
 Python API to interact with central registry and associated mappings
 """
