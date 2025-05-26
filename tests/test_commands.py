@@ -1,8 +1,11 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2025 Quansight Labs
+
 from pathlib import Path
 
 import pytest
 
-from external_metadata_mappings import Mapping
+from pyproject_external import Mapping
 
 HERE = Path(__file__).parent
 ROOT = HERE.parent

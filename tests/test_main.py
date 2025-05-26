@@ -1,9 +1,12 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2025 Quansight Labs
+
 from pathlib import Path
 
 import pytest
 from packageurl import PackageURL
 
-from external_metadata_mappings import Ecosystems, Mapping, Registry
+from pyproject_external import Ecosystems, Mapping, Registry
 
 
 HERE = Path(__file__).parent
