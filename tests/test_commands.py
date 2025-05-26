@@ -1,15 +1,10 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2025 Quansight Labs
 
-from pathlib import Path
-
 import pytest
 
 from pyproject_external import Mapping
-
-HERE = Path(__file__).parent
-ROOT = HERE.parent
-DATA = ROOT / "data"
+from pyproject_external._constants import DEFAULT_MAPPING_URL_TEMPLATE
 
 
 @pytest.fixture
@@ -172,6 +167,6 @@ def test_add_version_to_spec(mapping_instance, name, version, pm_config, expecte
     ),
 )
 def test_build_command(dep_url, expected):
-    mapping = Mapping.from_path(DATA / "conda-forge.mapping.json")
+    mapping = Mapping.from_url(DEFAULT_MAPPING_URL_TEMPLATE.format("conda-forge"))
     for specs in mapping.iter_specs_by_id(dep_url, "conda"):
         assert expected in specs

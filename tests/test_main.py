@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2025 Quansight Labs
 
-from pathlib import Path
+from functools import cache
 
 import pytest
 from packageurl import PackageURL
@@ -9,40 +9,32 @@ from packageurl import PackageURL
 from pyproject_external import Ecosystems, Mapping, Registry
 
 
-HERE = Path(__file__).parent
-ROOT = HERE.parent
-DATA = ROOT / "data"
+@cache
+def default_registry():
+    return Registry.from_default()
 
 
-def datafile(filename: str) -> Path:
-    return DATA / filename
-
-
-REGISTRY_PATH = datafile("registry.json")
-ECOSYSTEMS_PATH = datafile("known-ecosystems.json")
-MAPPINGS = sorted(DATA.glob("*.mapping.json"))
+@cache
+def default_ecosystems():
+    return Ecosystems.from_default()
 
 
 def test_registry():
-    Registry.from_path(REGISTRY_PATH).validate()
+    default_registry().validate()
 
 
 def test_ecosystems():
-    Ecosystems.from_path(ECOSYSTEMS_PATH).validate()
+    default_ecosystems().validate()
 
 
-@pytest.mark.parametrize("mapping", [pytest.param(m, id=m.name) for m in MAPPINGS])
+@pytest.mark.parametrize("mapping", sorted(default_ecosystems().iter_all()))
 def test_mappings(mapping):
-    Mapping.from_path(mapping).validate()
+    Mapping.from_default(mapping).validate()
 
 
 @pytest.mark.parametrize(
     "dep_url",
-    list(
-        dict.fromkeys(
-            [entry["id"] for entry in Registry.from_path(REGISTRY_PATH).iter_all()]
-        )
-    ),
+    list(dict.fromkeys([entry["id"] for entry in default_registry().iter_all()])),
 )
 def test_registry_dep_urls_are_parsable(dep_url):
     if dep_url.startswith("dep:"):
@@ -51,8 +43,8 @@ def test_registry_dep_urls_are_parsable(dep_url):
 
 
 def test_resolve_virtual_gcc():
-    mapping = Mapping.from_path(DATA / "fedora.mapping.json")
-    registry = Registry.from_path(DATA / "registry.json")
+    mapping = Mapping.from_default("fedora")
+    registry = default_registry()
     arrow = next(
         iter(
             mapping.iter_by_id(
@@ -64,8 +56,8 @@ def test_resolve_virtual_gcc():
 
 
 def test_resolve_alias_arrow():
-    mapping = Mapping.from_path(DATA / "fedora.mapping.json")
-    registry = Registry.from_path(DATA / "registry.json")
+    mapping = Mapping.from_default("fedora")
+    registry = default_registry()
     arrow = next(
         iter(
             mapping.iter_by_id(

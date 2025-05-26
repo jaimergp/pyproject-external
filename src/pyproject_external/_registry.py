@@ -14,20 +14,34 @@ import requests
 from jsonschema import Draft202012Validator, validators
 from packaging.specifiers import Specifier
 
+from ._constants import (
+    DEFAULT_ECOSYSTEMS_SCHEMA_URL,
+    DEFAULT_MAPPING_SCHEMA_URL,
+    DEFAULT_REGISTRY_SCHEMA_URL,
+    DEFAULT_ECOSYSTEMS_URL,
+    DEFAULT_REGISTRY_URL,
+    DEFAULT_MAPPING_URL_TEMPLATE,
+)
+
 HERE = Path(__file__).parent
 SCHEMAS_DIR = HERE.parent.parent / "schemas"
 
 
 class _Validated:
-    default_schema: Path
+    default_schema: Path | str | None
     _validator_cls = validators.create(
         meta_schema=Draft202012Validator.META_SCHEMA,
         validators=dict(Draft202012Validator.VALIDATORS),
     )
 
     def _validator_inst(self, path_or_url: str | None = None):
-        if path_or_url is None:
-            schema = json.loads(self.default_schema.read_text())
+        if path_or_url is None and self.default_schema:
+            if str(self.default_schema).startswith(("http://", "https://")):
+                r = requests.get(self.default_schema)
+                r.raise_for_status()
+                schema = r.json()
+            else:
+                schema = json.loads(Path(self.default_schema).read_text())
         elif path_or_url.startswith(("http://", "https://")):
             r = requests.get(path_or_url)
             r.raise_for_status()
@@ -50,7 +64,19 @@ class _Validated:
             raise ValueError(f"Validation error: {msg}")
 
 
-class _FromPathOrUrl:
+class _FromPathOrUrlOrDefault:
+    default_source: str
+
+    @classmethod
+    def from_default(cls, *args):
+        if "{}" in cls.default_source:
+            default_source = cls.default_source.format(*args)
+        else:
+            default_source = cls.default_source
+        if default_source.startswith(("http://", "https://")):
+            return cls.from_url(default_source)
+        return cls.from_path(default_source)
+
     @classmethod
     def from_path(cls, path):
         with open(path) as f:
@@ -65,8 +91,9 @@ class _FromPathOrUrl:
         return cls(r.json())
 
 
-class Registry(UserDict, _Validated, _FromPathOrUrl):
-    default_schema: Path = SCHEMAS_DIR / "central-registry.schema.json"
+class Registry(UserDict, _Validated, _FromPathOrUrlOrDefault):
+    default_schema: str = DEFAULT_REGISTRY_SCHEMA_URL
+    default_source: str = DEFAULT_REGISTRY_URL
 
     def iter_unique_ids(self):
         seen = set()
@@ -107,16 +134,18 @@ class Registry(UserDict, _Validated, _FromPathOrUrl):
                 yield item
 
 
-class Ecosystems(UserDict, _Validated, _FromPathOrUrl):
-    default_schema: Path = SCHEMAS_DIR / "known-ecosystems.schema.json"
+class Ecosystems(UserDict, _Validated, _FromPathOrUrlOrDefault):
+    default_schema: str = DEFAULT_ECOSYSTEMS_SCHEMA_URL
+    default_source = DEFAULT_ECOSYSTEMS_URL
 
     def iter_all(self) -> Iterable[dict]:
         for eco in self.data.get("ecosystems", ()):
             yield eco
 
 
-class Mapping(UserDict, _Validated, _FromPathOrUrl):
-    default_schema: Path = SCHEMAS_DIR / "external-mapping.schema.json"
+class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
+    default_schema: str = DEFAULT_MAPPING_SCHEMA_URL
+    default_source: str = DEFAULT_MAPPING_URL_TEMPLATE
     default_operator_mapping = {
         "and": ",",
         "separator": "",
@@ -224,13 +253,9 @@ class Mapping(UserDict, _Validated, _FromPathOrUrl):
             specs_type = (specs_type,)
         mgr = self.get_package_manager(package_manager)
         for entry in self.iter_by_id(dep_url, **kwargs):
-            specs = list(
-                dict.fromkeys(s for key in specs_type for s in entry["specs"][key])
-            )
+            specs = list(dict.fromkeys(s for key in specs_type for s in entry["specs"][key]))
             if version:
-                specs = [
-                    self._add_version_to_spec(spec, version, mgr) for spec in specs
-                ]
+                specs = [self._add_version_to_spec(spec, version, mgr) for spec in specs]
             yield specs
 
     def iter_install_commands(
@@ -257,9 +282,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrl):
         cmd.extend(specs)
         return cmd
 
-    def _add_version_to_spec(
-        self, name: str, version: str, package_manager: dict
-    ) -> str:
+    def _add_version_to_spec(self, name: str, version: str, package_manager: dict) -> str:
         operator_mapping_config = package_manager.get("version_operators")
         if operator_mapping_config == {} or not version:
             return name

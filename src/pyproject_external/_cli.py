@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2023 Quansight Labs
 
 import logging
-import shlex
 import tarfile
 import tomllib
 from functools import cache
@@ -14,8 +13,8 @@ import typer
 from rich import print as rprint
 from rich.console import Console
 from rich.logging import RichHandler
-from ._registry import Ecosystems, Registry, Mapping
 
+from ._registry import Ecosystems, Registry, Mapping
 
 HERE = Path(__file__).parent
 logging.basicConfig(
@@ -29,30 +28,19 @@ log = logging.getLogger(__name__)
 
 @cache
 def get_known_ecosystems() -> Mapping:
-    return Ecosystems.from_url(
-        "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/"
-        "refs/heads/main/data/known-ecosystems.json"
-    )
+    return Ecosystems.from_default()
 
 
 @cache
 def get_remote_mapping(ecosystem_or_url: str) -> Mapping:
-    if ecosystem_or_url.startswith(("http:", "https:")):
-        url = ecosystem_or_url
-    else:
-        url = (
-            "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/"
-            f"refs/heads/main/data/{ecosystem_or_url}.mapping.json"
-        )
-    return Mapping.from_url(url)
+    if ecosystem_or_url.startswith(("http://", "https://")):
+        return Mapping.from_url(ecosystem_or_url)
+    return Mapping.from_default(ecosystem_or_url)
 
 
 @cache
 def get_remote_registry() -> Registry:
-    return Registry.from_url(
-        "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/"
-        "refs/heads/main/data/registry.json"
-    )
+    return Registry.from_default()
 
 
 def validate_purl(purl):
