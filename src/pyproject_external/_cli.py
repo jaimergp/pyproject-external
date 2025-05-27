@@ -237,9 +237,13 @@ package_manager_to_distro = {v: k for k, v in distro_to_package_manager.items()}
 
 def main(
     package_name: str,
-    external: Annotated[bool, typer.Option(help="Show external dependencies for package")] = False,
+    external: Annotated[
+        bool,
+        typer.Option(help="Show external dependencies for package"),
+    ] = False,
     validate: Annotated[
-        bool, typer.Option(help="Validate external dependencies against central registry")
+        bool,
+        typer.Option(help="Validate external dependencies against central registry"),
     ] = False,
     system_install_cmd: Annotated[
         bool,
@@ -249,10 +253,12 @@ def main(
         ),
     ] = False,
     package_manager: Annotated[
-        str, typer.Option(help="If given, use this package manager rather than auto-detect one")
+        str,
+        typer.Option(help="If given, use this package manager rather than auto-detect one"),
     ] = "",
     sdist_dir: Annotated[
-        str | None, typer.Option(help="Directory where amended sdists are located")
+        str | None,
+        typer.Option(help="Directory where amended sdists are located"),
     ] = None,
 ) -> None:
     """
