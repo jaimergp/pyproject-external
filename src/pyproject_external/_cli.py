@@ -16,7 +16,6 @@ from rich.logging import RichHandler
 
 from ._registry import Ecosystems, Registry, Mapping
 
-HERE = Path(__file__).parent
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
@@ -61,12 +60,8 @@ def validate_purl(purl):
         log.warning(msg)
 
 
-def read_pyproject(package_name: str, sdist_dir: str | Path | None = None):
-    if sdist_dir is None:
-        # assume editable install
-        sdist_dir = HERE / "../../sdist/_amended/"
-    else:
-        sdist_dir = Path(sdist_dir)
+def read_pyproject(package_name: str, sdist_dir: str | Path):
+    sdist_dir = Path(sdist_dir)
     fname_sdist = None
     for name in (package_name, package_name.replace("-", "_"), package_name.replace("_", "-")):
         tarballs = sorted(sdist_dir.glob(f"{name}-*.tar.gz"))

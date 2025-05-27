@@ -23,9 +23,6 @@ from ._constants import (
     DEFAULT_MAPPING_URL_TEMPLATE,
 )
 
-HERE = Path(__file__).parent
-SCHEMAS_DIR = HERE.parent.parent / "schemas"
-
 
 class _Validated:
     default_schema: Path | str | None
