@@ -4,14 +4,16 @@
 pyproject-external - Utilities to work with PEP 725 `[external]` metadata
 """
 
+from ._external import External  # noqa
 from ._registry import Registry, Ecosystems, Mapping  # noqa
 from ._url import DepURL  # noqa
 
 __all__ = [
-    "Registry",
-    "Ecosystems",
-    "Mapping",
     "DepURL",
+    "Ecosystems",
+    "External",
+    "Mapping",
+    "Registry",
 ]
 
 

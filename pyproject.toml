@@ -29,13 +29,17 @@ dependencies = [
   "jsonschema",
   "distro",
   "rich",
+  "tomli",
   "typer",
   "packaging",
-  "packageurl-python==0.16.0"
+  "packageurl-python @ git+https://github.com/jaimergp/packageurl-python.git@pkg-class-attr",
 ]
 
 [project.urls]
 homepage = "https://github.com/jaimergp/pyproject-external"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.pixi.project]
 channels = ["conda-forge"]
