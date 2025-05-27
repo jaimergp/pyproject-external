@@ -8,7 +8,7 @@ Python API to interact with central registry and associated mappings
 import json
 from collections import UserDict
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Literal
 
 import requests
 from jsonschema import Draft202012Validator, validators
@@ -22,6 +22,9 @@ from ._constants import (
     DEFAULT_REGISTRY_URL,
     DEFAULT_MAPPING_URL_TEMPLATE,
 )
+
+
+TBuildHostRun = Literal["build", "host", "run"]
 
 
 class _Validated:
@@ -150,12 +153,20 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     }
 
     @property
-    def name(self):
+    def name(self) -> str | None:
         return self.get("name")
 
     @property
-    def description(self):
+    def description(self) -> str | None:
         return self.get("description")
+
+    @property
+    def mappings(self) -> list[dict[str, Any]]:
+        return self.data.get("package_managers", [])
+
+    @property
+    def package_managers(self) -> list[dict[str, Any]]:
+        return self.data.get("package_managers", [])
 
     def iter_all(self, resolve_specs=True):
         for entry in self.data["mappings"]:
@@ -235,7 +246,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         self,
         dep_url: str,
         package_manager: str,
-        specs_type: str | Iterable[str] | None = None,
+        specs_type: TBuildHostRun | Iterable[TBuildHostRun] | None = None,
         **kwargs,
     ):
         if "@" in dep_url and not dep_url.startswith("dep:virtual/"):
@@ -259,7 +270,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         self,
         dep_url: str,
         package_manager: str,
-        specs_type: str | Iterable[str] | None = None,
+        specs_type: TBuildHostRun | Iterable[TBuildHostRun] | None = None,
     ) -> Iterable[list[str]]:
         mgr = self.get_package_manager(package_manager)
         for specs in self.iter_specs_by_id(dep_url, package_manager, specs_type):
