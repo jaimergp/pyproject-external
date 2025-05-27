@@ -27,7 +27,6 @@ requires-python = ">=3.10"
 dependencies = [
   "requests",
   "jsonschema",
-  "pypi_json",
   "distro",
   "rich",
   "typer",
