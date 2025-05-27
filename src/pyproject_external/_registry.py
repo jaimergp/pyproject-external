@@ -138,9 +138,19 @@ class Ecosystems(UserDict, _Validated, _FromPathOrUrlOrDefault):
     default_schema: str = DEFAULT_ECOSYSTEMS_SCHEMA_URL
     default_source = DEFAULT_ECOSYSTEMS_URL
 
-    def iter_all(self) -> Iterable[dict]:
-        for eco in self.data.get("ecosystems", ()):
-            yield eco
+    # TODO: These methods might need a better API
+
+    def iter_names(self) -> Iterable[tuple[str, dict[Literal["mapping"] : str]]]:
+        for name in self.data.get("ecosystems", {}):
+            yield name
+
+    def iter_items(self) -> Iterable[tuple[str, dict[Literal["mapping"] : str]]]:
+        for item in self.data.get("ecosystems", {}).items():
+            yield item
+
+    def iter_mappings(self) -> Iterable["Mapping"]:
+        for name, ecosystem in self.iter_items():
+            yield Mapping.from_url(ecosystem["mapping"])
 
 
 class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
@@ -236,11 +246,11 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
             specs = {"build": specs, "host": specs, "run": specs}
         return specs
 
-    def get_package_manager(self, name: str) -> dict:
+    def get_package_manager(self, name: str) -> dict[str, Any]:
         for manager in self.data["package_managers"]:
             if manager["name"] == name:
                 return manager
-        raise KeyError(f"Could not find '{name}' in {self.data['package_managers']}")
+        raise ValueError(f"Could not find '{name}' in {self.data['package_managers']}")
 
     def iter_specs_by_id(
         self,

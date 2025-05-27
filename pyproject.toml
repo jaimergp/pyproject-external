@@ -30,6 +30,7 @@ dependencies = [
   "distro",
   "rich",
   "tomli",
+  "tomli-w",
   "typer",
   "packaging",
   "packageurl-python @ git+https://github.com/jaimergp/packageurl-python.git@pkg-class-attr",

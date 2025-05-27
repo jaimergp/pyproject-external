@@ -21,8 +21,8 @@ def test_external():
         "conda-forge",
         key="build_requires",
         package_manager="conda",
-    ) == ["c-compiler"]
-    assert set(["conda", "install", "c-compiler"]).issubset(
+    ) == ["c-compiler", "python"]
+    assert set(["conda", "install", "c-compiler", "python"]).issubset(
         ext.install_command(
             "conda-forge",
             key="build_requires",

@@ -27,7 +27,7 @@ def test_ecosystems():
     default_ecosystems().validate()
 
 
-@pytest.mark.parametrize("mapping", sorted(default_ecosystems().iter_all()))
+@pytest.mark.parametrize("mapping", sorted(default_ecosystems().iter_names()))
 def test_mappings(mapping):
     Mapping.from_default(mapping).validate()
 
