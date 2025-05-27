@@ -1,5 +1,7 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2023 Quansight Labs
+
 import logging
-import shlex
 import tarfile
 import tomllib
 from functools import cache
@@ -11,10 +13,9 @@ import typer
 from rich import print as rprint
 from rich.console import Console
 from rich.logging import RichHandler
-from external_metadata_mappings import Ecosystems, Registry, Mapping
 
+from ._registry import Ecosystems, Registry, Mapping
 
-HERE = Path(__file__).parent
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
@@ -26,30 +27,19 @@ log = logging.getLogger(__name__)
 
 @cache
 def get_known_ecosystems() -> Mapping:
-    return Ecosystems.from_url(
-        "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/"
-        "refs/heads/main/data/known-ecosystems.json"
-    )
+    return Ecosystems.from_default()
 
 
 @cache
 def get_remote_mapping(ecosystem_or_url: str) -> Mapping:
-    if ecosystem_or_url.startswith(("http:", "https:")):
-        url = ecosystem_or_url
-    else:
-        url = (
-            "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/"
-            f"refs/heads/main/data/{ecosystem_or_url}.mapping.json"
-        )
-    return Mapping.from_url(url)
+    if ecosystem_or_url.startswith(("http://", "https://")):
+        return Mapping.from_url(ecosystem_or_url)
+    return Mapping.from_default(ecosystem_or_url)
 
 
 @cache
 def get_remote_registry() -> Registry:
-    return Registry.from_url(
-        "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/"
-        "refs/heads/main/data/registry.json"
-    )
+    return Registry.from_default()
 
 
 def validate_purl(purl):
@@ -70,12 +60,8 @@ def validate_purl(purl):
         log.warning(msg)
 
 
-def read_pyproject(package_name: str, sdist_dir: str | Path | None = None):
-    if sdist_dir is None:
-        # assume editable install
-        sdist_dir = HERE / "../../sdist/_amended/"
-    else:
-        sdist_dir = Path(sdist_dir)
+def read_pyproject(package_name: str, sdist_dir: str | Path):
+    sdist_dir = Path(sdist_dir)
     fname_sdist = None
     for name in (package_name, package_name.replace("-", "_"), package_name.replace("_", "-")):
         tarballs = sorted(sdist_dir.glob(f"{name}-*.tar.gz"))
@@ -251,9 +237,13 @@ package_manager_to_distro = {v: k for k, v in distro_to_package_manager.items()}
 
 def main(
     package_name: str,
-    external: Annotated[bool, typer.Option(help="Show external dependencies for package")] = False,
+    external: Annotated[
+        bool,
+        typer.Option(help="Show external dependencies for package"),
+    ] = False,
     validate: Annotated[
-        bool, typer.Option(help="Validate external dependencies against central registry")
+        bool,
+        typer.Option(help="Validate external dependencies against central registry"),
     ] = False,
     system_install_cmd: Annotated[
         bool,
@@ -263,10 +253,12 @@ def main(
         ),
     ] = False,
     package_manager: Annotated[
-        str, typer.Option(help="If given, use this package manager rather than auto-detect one")
+        str,
+        typer.Option(help="If given, use this package manager rather than auto-detect one"),
     ] = "",
     sdist_dir: Annotated[
-        str | None, typer.Option(help="Directory where amended sdists are located")
+        str | None,
+        typer.Option(help="Directory where amended sdists are located"),
     ] = None,
 ) -> None:
     """
