@@ -172,8 +172,11 @@ class External:
                     all_specs.extend(specs)
                     break
                 else:
+                    msg = f"[{category}] '{dep_str}' does not have any mappings in '{ecosystem}'!"
                     if required:
-                        raise ValueError(f"'{dep_str}' has no mapped deps in {ecosystem}!")
+                        raise ValueError(msg)
+                    else:
+                        log.warning(msg)
 
         if include_python_dev:
             # TODO: handling of non-default Python installs isn't done here,
