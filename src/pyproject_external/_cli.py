@@ -3,11 +3,15 @@
 import logging
 import shlex
 import tarfile
-import tomllib
 from enum import Enum
 from functools import cache
 from pathlib import Path
 from typing import Annotated
+
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
 
 import distro
 import tomli_w
