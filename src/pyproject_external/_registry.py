@@ -160,7 +160,7 @@ class Ecosystems(UserDict, _Validated, _FromPathOrUrlOrDefault):
     def iter_mappings(self) -> Iterable["Mapping"]:
         for name, ecosystem in self.iter_items():
             yield Mapping.from_url(ecosystem["mapping"])
-    
+
     def get_mapping(self, name: str, default: Any = ...) -> "Mapping":
         for item_name, ecosystem in self.iter_items():
             if name == item_name:
@@ -209,14 +209,14 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         key: str,
         only_mapped: bool = False,
         resolve_specs: bool = True,
-        resolve_alias_with_registry: Registry | None = None,
+        resolve_with_registry: Registry | None = None,
     ) -> Iterable[dict[str, Any]]:
         key = key.split("@", 1)[0]  # remove version components
         keys = {key}
-        if resolve_alias_with_registry is not None:
+        if resolve_with_registry is not None:
             keys.update(
                 prov
-                for alias in resolve_alias_with_registry.iter_aliases()
+                for alias in resolve_with_registry.iter_aliases()
                 for prov in alias["provides"]
                 if key == alias["id"]
             )

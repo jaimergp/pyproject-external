@@ -30,6 +30,7 @@ def test_external():
         )
     )
 
+
 def test_external_optional():
     toml = dedent(
         """
@@ -37,20 +38,24 @@ def test_external_optional():
         extra = [
             "dep:generic/make",
             "dep:generic/ninja",
+            "dep:generic/arrow",
         ]
         """
     )
     ext = External.from_pyproject_data(tomllib.loads(toml))
     assert len(ext.optional_build_requires) == 1
-    assert len(ext.optional_build_requires["extra"]) == 2
-    assert ext.optional_build_requires["extra"][0] == DepURL.from_string("dep:generic/make")
-    assert ext.optional_build_requires["extra"][1] == DepURL.from_string("dep:generic/ninja")
+    assert len(ext.optional_build_requires["extra"]) == 3
+    assert ext.optional_build_requires["extra"] == [
+        DepURL.from_string("dep:generic/make"),
+        DepURL.from_string("dep:generic/ninja"),
+        DepURL.from_string("dep:generic/arrow"),
+    ]
     assert ext.map_dependencies(
         "conda-forge",
         key="optional_build_requires",
         package_manager="conda",
-    ) == ["make", "ninja"]
-    assert set(["conda", "install", "make", "ninja"]).issubset(
+    ) == ["make", "ninja", "libarrow-all"]
+    assert set(["conda", "install", "make", "ninja", "libarrow-all"]).issubset(
         ext.install_command(
             "conda-forge",
             package_manager="conda",
