@@ -2174,7 +2174,7 @@ packages:
 - pypi: .
   name: pyproject-external
   version: 0.0.1
-  sha256: a0c44b244f39cb2d23d3457bd661049b5186a8b025364bc94bb2b44a55621cf2
+  sha256: 2ce35e80d679d7e7f34072d06fd5b0b487af4d672c5c1d5c426393a7391e71d9
   requires_dist:
   - requests
   - jsonschema
@@ -2183,6 +2183,7 @@ packages:
   - tomli
   - tomli-w
   - typer
+  - typing-extensions ; python_full_version < '3.11'
   - packaging
   - packageurl-python @ git+https://github.com/jaimergp/packageurl-python.git@pkg-class-attr
   requires_python: '>=3.10'

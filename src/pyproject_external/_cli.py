@@ -6,7 +6,7 @@ import tomllib
 from enum import Enum
 from functools import cache
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 
 import distro
 import tomli_w

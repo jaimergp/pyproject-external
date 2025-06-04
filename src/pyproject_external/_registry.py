@@ -8,7 +8,7 @@ Python API to interact with central registry and associated mappings
 import json
 from collections import UserDict
 from pathlib import Path
-from typing import Any, Iterable, Literal, Self
+from typing import TYPE_CHECKING
 
 import requests
 from jsonschema import Draft202012Validator, validators
@@ -23,6 +23,13 @@ from ._constants import (
     DEFAULT_MAPPING_URL_TEMPLATE,
 )
 
+if TYPE_CHECKING:
+    from typing import Any, Iterable, Literal
+
+    try:
+        from typing import Self
+    except ImportError:  # py 3.11+ required for Self
+        from typing_extensions import Self
 
 TBuildHostRun = Literal["build", "host", "run"]
 
