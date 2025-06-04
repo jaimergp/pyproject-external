@@ -8,7 +8,7 @@ Python API to interact with central registry and associated mappings
 import json
 from collections import UserDict
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Literal
 
 import requests
 from jsonschema import Draft202012Validator, validators
@@ -22,6 +22,9 @@ from ._constants import (
     DEFAULT_REGISTRY_URL,
     DEFAULT_MAPPING_URL_TEMPLATE,
 )
+
+
+TBuildHostRun = Literal["build", "host", "run"]
 
 
 class _Validated:
@@ -135,9 +138,19 @@ class Ecosystems(UserDict, _Validated, _FromPathOrUrlOrDefault):
     default_schema: str = DEFAULT_ECOSYSTEMS_SCHEMA_URL
     default_source = DEFAULT_ECOSYSTEMS_URL
 
-    def iter_all(self) -> Iterable[dict]:
-        for eco in self.data.get("ecosystems", ()):
-            yield eco
+    # TODO: These methods might need a better API
+
+    def iter_names(self) -> Iterable[tuple[str, dict[Literal["mapping"] : str]]]:
+        for name in self.data.get("ecosystems", {}):
+            yield name
+
+    def iter_items(self) -> Iterable[tuple[str, dict[Literal["mapping"] : str]]]:
+        for item in self.data.get("ecosystems", {}).items():
+            yield item
+
+    def iter_mappings(self) -> Iterable["Mapping"]:
+        for name, ecosystem in self.iter_items():
+            yield Mapping.from_url(ecosystem["mapping"])
 
 
 class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
@@ -150,12 +163,20 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     }
 
     @property
-    def name(self):
+    def name(self) -> str | None:
         return self.get("name")
 
     @property
-    def description(self):
+    def description(self) -> str | None:
         return self.get("description")
+
+    @property
+    def mappings(self) -> list[dict[str, Any]]:
+        return self.data.get("package_managers", [])
+
+    @property
+    def package_managers(self) -> list[dict[str, Any]]:
+        return self.data.get("package_managers", [])
 
     def iter_all(self, resolve_specs=True):
         for entry in self.data["mappings"]:
@@ -225,17 +246,17 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
             specs = {"build": specs, "host": specs, "run": specs}
         return specs
 
-    def get_package_manager(self, name: str) -> dict:
+    def get_package_manager(self, name: str) -> dict[str, Any]:
         for manager in self.data["package_managers"]:
             if manager["name"] == name:
                 return manager
-        raise KeyError(f"Could not find '{name}' in {self.data['package_managers']}")
+        raise ValueError(f"Could not find '{name}' in {self.data['package_managers']}")
 
     def iter_specs_by_id(
         self,
         dep_url: str,
         package_manager: str,
-        specs_type: str | Iterable[str] | None = None,
+        specs_type: TBuildHostRun | Iterable[TBuildHostRun] | None = None,
         **kwargs,
     ):
         if "@" in dep_url and not dep_url.startswith("dep:virtual/"):
@@ -259,7 +280,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         self,
         dep_url: str,
         package_manager: str,
-        specs_type: str | Iterable[str] | None = None,
+        specs_type: TBuildHostRun | Iterable[TBuildHostRun] | None = None,
     ) -> Iterable[list[str]]:
         mgr = self.get_package_manager(package_manager)
         for specs in self.iter_specs_by_id(dep_url, package_manager, specs_type):
