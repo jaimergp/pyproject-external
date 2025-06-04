@@ -160,6 +160,14 @@ class Ecosystems(UserDict, _Validated, _FromPathOrUrlOrDefault):
     def iter_mappings(self) -> Iterable["Mapping"]:
         for name, ecosystem in self.iter_items():
             yield Mapping.from_url(ecosystem["mapping"])
+    
+    def get_mapping(self, name: str, default: Any = ...) -> "Mapping":
+        for item_name, ecosystem in self.iter_items():
+            if name == item_name:
+                return Mapping.from_url(ecosystem["mapping"])
+        if default is not ...:
+            return default
+        raise ValueError(f"Mapping {name} cannot be found!")
 
 
 class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):

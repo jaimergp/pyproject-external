@@ -55,13 +55,13 @@ def _detect_ecosystem_and_package_manager() -> tuple[str, str]:
     for name in (distro.id(), distro.like()):
         if name == "darwin":
             return "homebrew", "brew"
-        if name in _known_ecosystems().iter_names():
-            mapping = _remote_mapping(_known_ecosystems().data[name]["mapping"])
+        mapping = _known_ecosystems().get_mapping(name, default=None)
+        if mapping:
             return name, mapping.package_managers[0]["name"]
 
     log.warning("No support for distro %s yet!", distro.id())
     # FIXME
-    return "fedora"
+    return "fedora", "dnf"
 
 
 def _read_pyproject_from_sdist(path: Path) -> str:
@@ -137,6 +137,7 @@ def main(
         ecosystem = _detect_ecosystem(package_manager)
     else:
         ecosystem, package_manager = _detect_ecosystem_and_package_manager()
+    log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
     if output == _OutputChoices.MAPPED_TABLE:
         mapped_dict = external.to_dict(mapped_for=ecosystem, package_manager=package_manager)
         rprint(rf"\{tomli_w.dumps(mapped_dict)}")
