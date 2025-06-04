@@ -46,7 +46,7 @@ def test_resolve_virtual_gcc():
     mapping = Mapping.from_default("fedora")
     registry = default_registry()
     arrow = next(
-        iter(mapping.iter_by_id("dep:virtual/compiler/c", resolve_alias_with_registry=registry))
+        iter(mapping.iter_by_id("dep:virtual/compiler/c", resolve_with_registry=registry))
     )
     assert arrow["specs"]["build"] == ["gcc"]
 
@@ -55,7 +55,7 @@ def test_resolve_alias_arrow():
     mapping = Mapping.from_default("fedora")
     registry = default_registry()
     arrow = next(
-        iter(mapping.iter_by_id("dep:github/apache/arrow", resolve_alias_with_registry=registry))
+        iter(mapping.iter_by_id("dep:github/apache/arrow", resolve_with_registry=registry))
     )
     assert arrow["specs"]["run"] == ["libarrow", "libarrow-dataset-libs"]
 

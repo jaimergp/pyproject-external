@@ -44,6 +44,7 @@ class External:
     optional_dependencies: dict[str, list[DepURL]] = field(default_factory=dict)
 
     def __post_init__(self):
+        self._registry = None
         for name, urls_or_group in asdict(self).items():
             if "optional" in name:
                 setattr(self, "_raw_" + name, {})
@@ -68,6 +69,12 @@ class External:
         except KeyError:
             raise ValueError("Pyproject data does not have an 'external' table.")
 
+    @property
+    def registry(self):
+        if self._registry is None:
+            self._registry = Registry.from_default()
+        return self._registry
+
     def to_dict(
         self, mapped_for: str | None = None, package_manager: str | None = None
     ) -> dict[str, list[DepURL]]:
@@ -76,7 +83,11 @@ class External:
             if not value:
                 continue
             if mapped_for is not None:
-                value = self.map_dependencies(mapped_for, name, package_manager=package_manager)
+                value = self.map_dependencies(
+                    mapped_for,
+                    name,
+                    package_manager=package_manager,
+                )
             else:
                 value = [url.to_string() for url in value]
             result[name] = value
@@ -173,7 +184,10 @@ class External:
                 ):
                     include_python_dev = True
                 for specs in mapping.iter_specs_by_id(
-                    dep_str, package_manager, specs_type=specs_type
+                    dep_str,
+                    package_manager,
+                    specs_type=specs_type,
+                    resolve_with_registry=self.registry,
                 ):
                     if not specs:
                         continue
@@ -238,14 +252,13 @@ class External:
     def validate(self, registry: bool = True, canonical: bool = True) -> None:
         if not registry and not canonical:
             return
-        default_registry = Registry.from_default()
         for url in self.iter():
-            if registry and url not in default_registry.iter_unique_urls():
+            if registry and url not in self.registry.iter_unique_urls():
                 log.warning(f"Dep URL {url} is not recognized in the central registry.")
             if canonical:
-                canonical_entries = {item["id"] for item in default_registry.iter_canonical()}
+                canonical_entries = {item["id"] for item in self.registry.iter_canonical()}
                 if url not in canonical_entries:
-                    for d in default_registry.iter_by_id(url):
+                    for d in self.registry.iter_by_id(url):
                         if provides := d.get("provides"):
                             references = ", ".join(provides)
                             break

@@ -4,7 +4,6 @@
 import pytest
 
 from pyproject_external import Mapping
-from pyproject_external._constants import DEFAULT_MAPPING_URL_TEMPLATE
 
 
 @pytest.fixture
@@ -167,6 +166,6 @@ def test_add_version_to_spec(mapping_instance, name, version, pm_config, expecte
     ),
 )
 def test_build_command(dep_url, expected):
-    mapping = Mapping.from_url(DEFAULT_MAPPING_URL_TEMPLATE.format("conda-forge"))
+    mapping = Mapping.from_default("conda-forge")
     for specs in mapping.iter_specs_by_id(dep_url, "conda"):
         assert expected in specs
