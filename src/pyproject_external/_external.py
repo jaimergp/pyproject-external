@@ -194,7 +194,14 @@ class External:
                     all_specs.extend(specs)
                     break
                 else:
-                    msg = f"[{category}] '{dep_str}' does not have any mappings in '{ecosystem}'!"
+                    msg = f"[{category}] '{dep_str}' does not have any '{specs_type}' mappings in '{ecosystem}'!"
+                    if mapping.iter_specs_by_id(
+                        dep_str, package_manager, resolve_with_registry=self.registry
+                    ):
+                        msg += (
+                            " There are mappings available in other categories, though."
+                            " Is this dependency in the right category?"
+                        )
                     if required:
                         raise ValueError(msg)
                     else:
