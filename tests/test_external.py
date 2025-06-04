@@ -6,6 +6,8 @@ except ImportError:
     import tomli as tomllib
 from pyproject_external import External, DepURL
 
+import pytest
+
 
 def test_external():
     toml = dedent(
@@ -61,3 +63,31 @@ def test_external_optional():
             package_manager="conda",
         )
     )
+
+
+def test_informative_error_message():
+    toml = dedent(
+        """
+        [external]
+        build-requires = [
+            "dep:generic/libyaml",
+        ]
+        """
+    )
+    ext = External.from_pyproject_data(tomllib.loads(toml))
+    with pytest.raises(ValueError, match="Is this dependency in the right category?"):
+        ext.map_dependencies("fedora", package_manager="dnf")
+
+
+def test_informative_error_message_optional(caplog):
+    toml = dedent(
+        """
+        [external.optional-build-requires]
+        extra = [
+            "dep:generic/libyaml",
+        ]
+        """
+    )
+    ext = External.from_pyproject_data(tomllib.loads(toml))
+    ext.map_dependencies("fedora", package_manager="dnf")
+    assert "Is this dependency in the right category?" in caplog.text
