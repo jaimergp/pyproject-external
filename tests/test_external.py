@@ -6,6 +6,8 @@ except ImportError:
     import tomli as tomllib
 from pyproject_external import External, DepURL
 
+import pytest
+
 
 def test_external():
     toml = dedent(
@@ -61,3 +63,61 @@ def test_external_optional():
             package_manager="conda",
         )
     )
+
+
+def test_crude_error_message():
+    toml = dedent(
+        """
+        [external]
+        build-requires = [
+            "dep:generic/does-not-exist",
+        ]
+        """
+    )
+    ext = External.from_pyproject_data(tomllib.loads(toml))
+    with pytest.raises(ValueError, match="does not have any") as exc:
+        ext.map_dependencies("fedora", package_manager="dnf")
+    assert "Is this dependency in the right category?" not in str(exc.value)
+
+
+def test_informative_error_message():
+    toml = dedent(
+        """
+        [external]
+        build-requires = [
+            "dep:generic/libyaml",
+        ]
+        """
+    )
+    ext = External.from_pyproject_data(tomllib.loads(toml))
+    with pytest.raises(ValueError, match="Is this dependency in the right category?") as exc:
+        ext.map_dependencies("fedora", package_manager="dnf")
+
+
+def test_crude_error_message_optional(caplog):
+    toml = dedent(
+        """
+        [external.optional-build-requires]
+        extra = [
+            "dep:generic/does-not-exist",
+        ]
+        """
+    )
+    ext = External.from_pyproject_data(tomllib.loads(toml))
+    ext.map_dependencies("fedora", package_manager="dnf")
+    assert "does not have any" in caplog.text
+    assert "Is this dependency in the right category?" not in caplog.text
+
+
+def test_informative_error_message_optional(caplog):
+    toml = dedent(
+        """
+        [external.optional-build-requires]
+        extra = [
+            "dep:generic/libyaml",
+        ]
+        """
+    )
+    ext = External.from_pyproject_data(tomllib.loads(toml))
+    ext.map_dependencies("fedora", package_manager="dnf")
+    assert "Is this dependency in the right category?" in caplog.text

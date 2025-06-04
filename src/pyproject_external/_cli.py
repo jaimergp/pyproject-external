@@ -64,7 +64,7 @@ def _detect_ecosystem_and_package_manager() -> tuple[str, str]:
         if mapping:
             return name, mapping.package_managers[0]["name"]
 
-    log.warning("No support for distro %s yet!", distro.id())
+    log.warning("No support for distro %s yet", distro.id())
     # FIXME
     return "fedora", "dnf"
 
