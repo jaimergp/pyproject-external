@@ -55,13 +55,13 @@ def _detect_ecosystem_and_package_manager() -> tuple[str, str]:
     for name in (distro.id(), distro.like()):
         if name == "darwin":
             return "homebrew", "brew"
-        if name in _known_ecosystems().iter_names():
-            mapping = _remote_mapping(_known_ecosystems().data[name]["mapping"])
+        mapping = _known_ecosystems().get_mapping(name, default=None)
+        if mapping:
             return name, mapping.package_managers[0]["name"]
 
     log.warning("No support for distro %s yet!", distro.id())
     # FIXME
-    return "fedora"
+    return "fedora", "dnf"
 
 
 def _read_pyproject_from_sdist(path: Path) -> str:
