@@ -2174,13 +2174,13 @@ packages:
 - pypi: .
   name: pyproject-external
   version: 0.0.1
-  sha256: 2ce35e80d679d7e7f34072d06fd5b0b487af4d672c5c1d5c426393a7391e71d9
+  sha256: 01033617e94cc0d4c8f24b97cdabaa36f15da26bc3b3b515278b9f5e91cca856
   requires_dist:
   - requests
   - jsonschema
   - distro
   - rich
-  - tomli
+  - tomli ; python_full_version < '3.11'
   - tomli-w
   - typer
   - typing-extensions ; python_full_version < '3.11'

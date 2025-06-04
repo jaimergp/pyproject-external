@@ -29,7 +29,7 @@ dependencies = [
   "jsonschema",
   "distro",
   "rich",
-  "tomli",
+  "tomli; python_version <= '3.10'",
   "tomli-w",
   "typer",
   "typing_extensions; python_version <= '3.10'",

@@ -1,12 +1,17 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2023 Quansight Labs
 import logging
+import shlex
 import tarfile
-import tomllib
 from enum import Enum
 from functools import cache
 from pathlib import Path
 from typing import Annotated
+
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
 
 import distro
 import tomli_w
@@ -144,9 +149,9 @@ def main(
     # The following outputs might be used in shell substitutions like $(), so use print()
     # directly. rich's print will hard-wrap the line and break the output.
     elif output == _OutputChoices.COMMAND:
-        print(*external.install_command(ecosystem, package_manager=package_manager))
+        print(shlex.join(external.install_command(ecosystem, package_manager=package_manager)))
     elif output == _OutputChoices.MAPPED_LIST:
-        print(*external.map_dependencies(ecosystem, package_manager=package_manager))
+        print(shlex.join(external.map_dependencies(ecosystem, package_manager=package_manager)))
     else:
         raise typer.BadParameter(f"Unknown value for --output: {output}")
 
