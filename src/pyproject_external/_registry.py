@@ -255,6 +255,13 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         if isinstance(specs, str):
             specs = {"build": [specs], "host": [specs], "run": [specs]}
         elif hasattr(specs, "items"):  # assert all fields are present as lists
+            # TODO: Review if this is an ok assumption.
+            # Absent fields let other fields fill in following this order:
+            # run > host > field. To really remove a category, it must be set to [] 
+            if "host" not in specs and (run_specs := specs.get("run")):
+                specs["host"] = run_specs
+            if "build" not in specs and (host_specs := specs.get("host")):
+                specs["build"] = host_specs
             for key in "build", "host", "run":
                 specs.setdefault(key, [])
                 if isinstance(specs[key], str):

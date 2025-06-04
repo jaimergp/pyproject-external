@@ -31,6 +31,30 @@ def test_external():
     )
 
 
+def test_libyaml_host_as_build():
+    toml = dedent(
+        """
+        [external]
+        build-requires = ["dep:generic/libyaml"]
+        """
+    )
+    ext = External.from_pyproject_data(tomllib.loads(toml))
+    assert len(ext.build_requires) == 1
+    assert ext.build_requires[0] == DepURL.from_string("dep:generic/libyaml")
+    assert ext.map_dependencies(
+        "fedora",
+        key="build_requires",  # note mapping only has host deps for this one
+        package_manager="dnf",
+    ) == ["libyaml", "libyaml-devel"]
+    assert set(["dnf", "install", "libyaml", "libyaml-devel"]).issubset(
+        ext.install_command(
+            "fedora",
+            key="build_requires",
+            package_manager="dnf",
+        )
+    )
+
+
 def test_external_optional():
     toml = dedent(
         """
