@@ -12,16 +12,12 @@ except ImportError:
     import tomli as tomllib
 
 if TYPE_CHECKING:
-    from typing import Any, Iterable, Literal, TypeAlias
+    from typing import Any, Iterable, Literal
 
     try:
         from typing import Self
-
-        _TExternal: TypeAlias = Self
     except ImportError:  # py 3.11+ required for Self
-        from typing import TypeVar
-
-        _TExternal: TypeVar = TypeVar("TExternal", bound="External")
+        from typing_extensions import Self
 
 from ._registry import Ecosystems, Mapping, Registry
 from ._url import DepURL
@@ -45,7 +41,7 @@ class External:
             setattr(self, name, [DepURL.from_string(url) for url in urls])
 
     @classmethod
-    def from_pyproject_path(cls, path: os.PathLike | Path) -> _TExternal:
+    def from_pyproject_path(cls, path: os.PathLike | Path) -> Self:
         with open(path, "rb") as f:
             data = tomllib.load(f)
         return cls.from_pyproject_data(data)

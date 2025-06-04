@@ -6,7 +6,7 @@ import tomllib
 from enum import Enum
 from functools import cache
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 
 import distro
 import tomli_w
@@ -64,7 +64,7 @@ def _detect_ecosystem_and_package_manager() -> tuple[str, str]:
     return "fedora"
 
 
-def _read_pyproject_from_sdist(path: Path) -> dict[str, Any]:
+def _read_pyproject_from_sdist(path: Path) -> str:
     with tarfile.open(path) as tar:
         for info in tar.getmembers():
             name = info.name
@@ -150,9 +150,11 @@ def main(
         raise typer.BadParameter(f"Unknown value for --output: {output}")
 
 
-def entry_point():
+def entry_point() -> None:
     typer.run(main)
 
 
 if __name__ == "__main__":
-    entry_point()
+    import sys
+
+    sys.exit(entry_point())
