@@ -78,3 +78,8 @@ pre-commit = ["pre-commit"]
 
 [tool.ruff]
 line-length = 99
+
+[tool.mypy]
+show_error_codes = true
+ignore_missing_imports = true
+strict = true

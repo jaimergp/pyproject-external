@@ -8,7 +8,7 @@ Python API to interact with central registry and associated mappings
 import json
 from collections import UserDict
 from pathlib import Path
-from typing import Any, Iterable, Literal
+from typing import Any, Iterable, Literal, Self
 
 import requests
 from jsonschema import Draft202012Validator, validators
@@ -56,7 +56,7 @@ class _Validated:
                 schema = json.loads(Path(path_or_url).read_text())
         return self._validator_cls(schema)
 
-    def validate(self):
+    def validate(self) -> None:
         schema_definition = self.data.get("$schema") or None
         errors = list(self._validator_inst(schema_definition).iter_errors(self.data))
         if errors:
@@ -68,7 +68,7 @@ class _FromPathOrUrlOrDefault:
     default_source: str
 
     @classmethod
-    def from_default(cls, *args):
+    def from_default(cls, *args) -> Self:
         if "{}" in cls.default_source:
             default_source = cls.default_source.format(*args)
         else:
@@ -78,14 +78,14 @@ class _FromPathOrUrlOrDefault:
         return cls.from_path(default_source)
 
     @classmethod
-    def from_path(cls, path):
+    def from_path(cls, path) -> Self:
         with open(path) as f:
             inst = cls(json.load(f))
         inst._path = path
         return inst
 
     @classmethod
-    def from_url(cls, url):
+    def from_url(cls, url) -> Self:
         r = requests.get(url)
         r.raise_for_status()
         return cls(r.json())
@@ -95,40 +95,40 @@ class Registry(UserDict, _Validated, _FromPathOrUrlOrDefault):
     default_schema: str = DEFAULT_REGISTRY_SCHEMA_URL
     default_source: str = DEFAULT_REGISTRY_URL
 
-    def iter_unique_ids(self):
+    def iter_unique_ids(self) -> Iterable[str]:
         seen = set()
         for item in self.iter_all():
             if (id_ := item["id"]) not in seen:
                 seen.add(id_)
                 yield id_
 
-    def iter_by_id(self, key):
+    def iter_by_id(self, key) -> Iterable[dict[str, Any]]:
         for item in self.iter_all():
             if item["id"] == key:
                 yield item
 
-    def iter_all(self):
+    def iter_all(self) -> Iterable[dict[str, Any]]:
         for item in self.data["definitions"]:
             yield item
 
-    def iter_canonical(self):
+    def iter_canonical(self) -> Iterable[dict[str, Any]]:
         for item in self.iter_all():
             if not item.get("provides") or all(
                 item.startswith("dep:virtual/") for item in item.get("provides")
             ):
                 yield item
 
-    def iter_aliases(self):
+    def iter_aliases(self) -> Iterable[dict[str, Any]]:
         for item in self.iter_all():
             if item.get("provides"):
                 yield item
 
-    def iter_generic(self):
+    def iter_generic(self) -> Iterable[dict[str, Any]]:
         for item in self.iter_all():
             if item["id"].startswith("dep:generic/"):
                 yield item
 
-    def iter_virtual(self):
+    def iter_virtual(self) -> Iterable[dict[str, Any]]:
         for item in self.iter_all():
             if item["id"].startswith("dep:virtual/"):
                 yield item
@@ -140,11 +140,11 @@ class Ecosystems(UserDict, _Validated, _FromPathOrUrlOrDefault):
 
     # TODO: These methods might need a better API
 
-    def iter_names(self) -> Iterable[tuple[str, dict[Literal["mapping"] : str]]]:
+    def iter_names(self) -> Iterable[tuple[str, dict[Literal["mapping"], str]]]:
         for name in self.data.get("ecosystems", {}):
             yield name
 
-    def iter_items(self) -> Iterable[tuple[str, dict[Literal["mapping"] : str]]]:
+    def iter_items(self) -> Iterable[tuple[str, dict[Literal["mapping"], str]]]:
         for item in self.data.get("ecosystems", {}).items():
             yield item
 
@@ -178,7 +178,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     def package_managers(self) -> list[dict[str, Any]]:
         return self.data.get("package_managers", [])
 
-    def iter_all(self, resolve_specs=True):
+    def iter_all(self, resolve_specs=True) -> Iterable[dict[str, Any]]:
         for entry in self.data["mappings"]:
             if resolve_specs:
                 entry = entry.copy()
@@ -193,7 +193,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         only_mapped: bool = False,
         resolve_specs: bool = True,
         resolve_alias_with_registry: Registry | None = None,
-    ):
+    ) -> Iterable[dict[str, Any]]:
         key = key.split("@", 1)[0]  # remove version components
         keys = {key}
         if resolve_alias_with_registry is not None:
@@ -224,7 +224,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
                 else:
                     yield entry
 
-    def _resolve_specs(self, mapping_entry):
+    def _resolve_specs(self, mapping_entry) -> list[str]:
         if specs := mapping_entry.get("specs"):
             return specs
         elif specs_from := mapping_entry.get("specs_from"):
@@ -258,7 +258,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         package_manager: str,
         specs_type: TBuildHostRun | Iterable[TBuildHostRun] | None = None,
         **kwargs,
-    ):
+    ) -> Iterable[list[str]]:
         if "@" in dep_url and not dep_url.startswith("dep:virtual/"):
             # TODO: Virtual versions are not implemented
             # (e.g. how to map a language standard to a concrete version)

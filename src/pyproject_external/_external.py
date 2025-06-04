@@ -51,7 +51,7 @@ class External:
         return cls.from_pyproject_data(data)
 
     @classmethod
-    def from_pyproject_data(cls, data: dict[str, Any]) -> Self:
+    def from_pyproject_data(cls, data: dict[str, Any]) -> _TExternal:
         try:
             return cls(**{k.replace("-", "_"): v for k, v in data["external"].items()})
         except KeyError:
