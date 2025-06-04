@@ -12,12 +12,21 @@ except ImportError:
     import tomli as tomllib
 
 if TYPE_CHECKING:
-    from typing import Any, Iterable, Literal
+    from typing import Any, Iterable, Literal, TypeAlias
 
     try:
         from typing import Self
     except ImportError:  # py 3.11+ required for Self
         from typing_extensions import Self
+
+    ExternalKeys: TypeAlias = Literal[
+        "build_requires",
+        "host_requires",
+        "dependencies",
+        "optional_build_requires",
+        "optional_host_requires",
+        "optional_dependencies",
+    ]
 
 from ._registry import Ecosystems, Mapping, Registry
 from ._url import DepURL
@@ -30,15 +39,21 @@ class External:
     build_requires: list[DepURL] = field(default_factory=list)
     host_requires: list[DepURL] = field(default_factory=list)
     dependencies: list[DepURL] = field(default_factory=list)
-    optional_build_requires: list[DepURL] = field(default_factory=list)
-    optional_host_requires: list[DepURL] = field(default_factory=list)
-    optional_dependencies: list[DepURL] = field(default_factory=list)
+    optional_build_requires: dict[str, list[DepURL]] = field(default_factory=dict)
+    optional_host_requires: dict[str, list[DepURL]] = field(default_factory=dict)
+    optional_dependencies: dict[str, list[DepURL]] = field(default_factory=dict)
 
     def __post_init__(self):
-        for name, urls in asdict(self).items():
-            # coerce to DepURL and validate
-            setattr(self, "_raw_" + name, urls)
-            setattr(self, name, [DepURL.from_string(url) for url in urls])
+        for name, urls_or_group in asdict(self).items():
+            if "optional" in name:
+                setattr(self, "_raw_" + name, {})
+                for group_name, urls in urls_or_group.items():
+                    getattr(self, "_raw_" + name)[group_name] = urls
+                    getattr(self, name)[group_name] = [DepURL.from_string(url) for url in urls]
+            else:
+                # coerce to DepURL and validate
+                setattr(self, "_raw_" + name, urls_or_group)
+                setattr(self, name, [DepURL.from_string(url) for url in urls_or_group])
 
     @classmethod
     def from_pyproject_path(cls, path: os.PathLike | Path) -> Self:
@@ -77,7 +92,7 @@ class External:
             "optional_host_requires",
             "optional_dependencies",
         ],
-    ) -> Iterable[str]:
+    ) -> Iterable[DepURL]:
         if not categories:
             categories = (
                 "build_requires",
@@ -88,21 +103,18 @@ class External:
                 "optional_dependencies",
             )
         for category in categories:
-            for dependency in getattr(self, category):
-                yield dependency
+            if "optional" in category:
+                for group_name, dependencies in getattr(self, category).items():
+                    for dependency in dependencies:
+                        yield dependency
+            else:
+                for dependency in getattr(self, category):
+                    yield dependency
 
     def _map_install_deps_impl(
         self,
         ecosystem: str,
-        key: Literal[
-            "build_requires",
-            "host_requires",
-            "dependencies",
-            "optional_build_requires",
-            "optional_host_requires",
-            "optional_dependencies",
-        ]
-        | None = None,
+        key: ExternalKeys | None = None,
         package_manager: str | None = None,
         as_install_command: bool = False,
     ) -> list[str]:
@@ -150,7 +162,7 @@ class External:
             else:
                 raise ValueError(f"Unrecognized category '{category}'.")
 
-            for dep in getattr(self, category):
+            for dep in self.iter(category):
                 dep: DepURL
                 dep_str = dep.to_string()
                 if specs_type == "build" and dep_str in (
@@ -192,15 +204,7 @@ class External:
     def map_dependencies(
         self,
         ecosystem: str,
-        key: Literal[
-            "build_requires",
-            "host_requires",
-            "dependencies",
-            "optional_build_requires",
-            "optional_host_requires",
-            "optional_dependencies",
-        ]
-        | None = None,
+        key: ExternalKeys | None = None,
         package_manager: str | None = None,
     ) -> list[str]:
         return self._map_install_deps_impl(

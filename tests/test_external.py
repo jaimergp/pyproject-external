@@ -29,3 +29,30 @@ def test_external():
             package_manager="conda",
         )
     )
+
+def test_external_optional():
+    toml = dedent(
+        """
+        [external.optional-build-requires]
+        extra = [
+            "dep:generic/make",
+            "dep:generic/ninja",
+        ]
+        """
+    )
+    ext = External.from_pyproject_data(tomllib.loads(toml))
+    assert len(ext.optional_build_requires) == 1
+    assert len(ext.optional_build_requires["extra"]) == 2
+    assert ext.optional_build_requires["extra"][0] == DepURL.from_string("dep:generic/make")
+    assert ext.optional_build_requires["extra"][1] == DepURL.from_string("dep:generic/ninja")
+    assert ext.map_dependencies(
+        "conda-forge",
+        key="optional_build_requires",
+        package_manager="conda",
+    ) == ["make", "ninja"]
+    assert set(["conda", "install", "make", "ninja"]).issubset(
+        ext.install_command(
+            "conda-forge",
+            package_manager="conda",
+        )
+    )
