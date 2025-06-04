@@ -5,6 +5,8 @@
 Python API to interact with central registry and associated mappings
 """
 
+from __future__ import annotations
+
 import json
 from collections import UserDict
 from pathlib import Path
@@ -31,7 +33,7 @@ if TYPE_CHECKING:
     except ImportError:  # py 3.11+ required for Self
         from typing_extensions import Self
 
-TBuildHostRun = Literal["build", "host", "run"]
+    TBuildHostRun = Literal["build", "host", "run"]
 
 
 class _Validated:
