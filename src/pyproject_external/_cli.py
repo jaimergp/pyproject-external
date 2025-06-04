@@ -137,6 +137,7 @@ def main(
         ecosystem = _detect_ecosystem(package_manager)
     else:
         ecosystem, package_manager = _detect_ecosystem_and_package_manager()
+    log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
     if output == _OutputChoices.MAPPED_TABLE:
         mapped_dict = external.to_dict(mapped_for=ecosystem, package_manager=package_manager)
         rprint(rf"\{tomli_w.dumps(mapped_dict)}")
