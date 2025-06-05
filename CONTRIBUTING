@@ -13,3 +13,10 @@ consider the following guidelines:
   please open an issue to discuss first.
 - Please refrain from pull requests that deal with stylistic and non-critical
   code quality issues.
+
+## Local development workflow
+
+We use [`pixi`](https://github.com/prefix-dev/pixi) with the following tasks:
+
+- `pixi run python -m pyproject_external` to run the CLI locally.
+- `pixi run test` to run the tests. Choose your desired Python version by picking the adequate environment.
