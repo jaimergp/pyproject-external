@@ -19,6 +19,7 @@ import typer
 from rich import print as rprint
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.markup import escape
 
 from . import External, Mapping, Ecosystems
 
@@ -126,8 +127,7 @@ def main(
         raise typer.BadParameter("Package's pyproject.toml does not contain an 'external' table.")
 
     if output == _OutputChoices.RAW:
-        rprint(r"\[external]")
-        rprint(tomli_w.dumps(raw_external).rstrip())
+        rprint(escape(tomli_w.dumps({"external": raw_external}).rstrip()))
         return
 
     external = External.from_pyproject_data(pyproject)
@@ -135,7 +135,7 @@ def main(
         external.validate()
 
     if output == _OutputChoices.NORMALIZED:
-        rprint(rf"\{tomli_w.dumps(external.to_dict())}")
+        rprint(escape(tomli_w.dumps(external.to_dict())))
         return
 
     if package_manager:
@@ -145,7 +145,7 @@ def main(
     log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
     if output == _OutputChoices.MAPPED_TABLE:
         mapped_dict = external.to_dict(mapped_for=ecosystem, package_manager=package_manager)
-        rprint(rf"\{tomli_w.dumps(mapped_dict)}")
+        rprint(escape(tomli_w.dumps(mapped_dict)))
     # The following outputs might be used in shell substitutions like $(), so use print()
     # directly. rich's print will hard-wrap the line and break the output.
     elif output == _OutputChoices.COMMAND:
