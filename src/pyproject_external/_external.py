@@ -141,18 +141,13 @@ class External:
                 "optional_host_requires",
                 "optional_dependencies",
             )
-        if group_name is None:
-
-            def filter_(name):
-                return True
-        else:
-
-            def filter_(name):
-                name == group_name
 
         for category in categories:
-            for name, dependencies in getattr(self, category).items():
-                if filter_(name):
+            if group_name is not None:
+                for dependency in getattr(self, category).get(group_name, ()):
+                    yield group_name, dependency
+            else:
+                for name, dependencies in getattr(self, category).items():
                     for dependency in dependencies:
                         yield name, dependency
 
@@ -212,7 +207,7 @@ class External:
                 iterator = ((None, dep) for dep in self.iter(category))
             else:
                 iterator = self.iter_optional(category, group_name=group_name)
-            for maybe_group_name, dep in iterator:
+            for _, dep in iterator:
                 dep: DepURL
                 dep_str = dep.to_string()
                 if specs_type == "build" and dep_str in (
