@@ -82,14 +82,29 @@ class External:
         for name, value in asdict(self).items():
             if not value:
                 continue
-            if mapped_for is not None:
-                value = self.map_dependencies(
-                    mapped_for,
-                    name,
-                    package_manager=package_manager,
-                )
+            if "optional" in name:
+                new_value = {}
+                for group_name, urls in value.items():
+                    if mapped_for is not None:
+                        urls = self.map_dependencies(
+                            mapped_for,
+                            name,
+                            group_name=group_name,
+                            package_manager=package_manager,
+                        )
+                    else:
+                        urls = [url.to_string() for url in urls]
+                    new_value[group_name] = urls
+                value = new_value
             else:
-                value = [url.to_string() for url in value]
+                if mapped_for is not None:
+                    value = self.map_dependencies(
+                        mapped_for,
+                        name,
+                        package_manager=package_manager,
+                    )
+                else:
+                    value = [url.to_string() for url in value]
             result[name] = value
         return {"external": result}
 
@@ -99,9 +114,6 @@ class External:
             "build_requires",
             "host_requires",
             "dependencies",
-            "optional_build_requires",
-            "optional_host_requires",
-            "optional_dependencies",
         ],
     ) -> Iterable[DepURL]:
         if not categories:
@@ -109,23 +121,46 @@ class External:
                 "build_requires",
                 "host_requires",
                 "dependencies",
+            )
+        for category in categories:
+            for dependency in getattr(self, category):
+                yield dependency
+
+    def iter_optional(
+        self,
+        *categories: Literal[
+            "optional_build_requires",
+            "optional_host_requires",
+            "optional_dependencies",
+        ],
+        group_name: str | None = None,
+    ) -> Iterable[tuple[str, DepURL]]:
+        if not categories:
+            categories = (
                 "optional_build_requires",
                 "optional_host_requires",
                 "optional_dependencies",
             )
+        if group_name is None:
+
+            def filter_(name):
+                return True
+        else:
+
+            def filter_(name):
+                name == group_name
+
         for category in categories:
-            if "optional" in category:
-                for group_name, dependencies in getattr(self, category).items():
+            for name, dependencies in getattr(self, category).items():
+                if filter_(name):
                     for dependency in dependencies:
-                        yield dependency
-            else:
-                for dependency in getattr(self, category):
-                    yield dependency
+                        yield name, dependency
 
     def _map_install_deps_impl(
         self,
         ecosystem: str,
         key: ExternalKeys | None = None,
+        group_name: str | None = None,
         package_manager: str | None = None,
         as_install_command: bool = False,
     ) -> list[str]:
@@ -173,7 +208,11 @@ class External:
             else:
                 raise ValueError(f"Unrecognized category '{category}'.")
 
-            for dep in self.iter(category):
+            if required:
+                iterator = ((None, dep) for dep in self.iter(category))
+            else:
+                iterator = self.iter_optional(category, group_name=group_name)
+            for maybe_group_name, dep in iterator:
                 dep: DepURL
                 dep_str = dep.to_string()
                 if specs_type == "build" and dep_str in (
@@ -194,10 +233,16 @@ class External:
                     all_specs.extend(specs)
                     break
                 else:
-                    msg = f"[{category}] '{dep_str}' does not have any '{specs_type}' mappings in '{ecosystem}'!"
-                    if next(mapping.iter_specs_by_id(
-                        dep_str, package_manager, resolve_with_registry=self.registry
-                    ), None):
+                    msg = (
+                        f"[{category}] '{dep_str}' does not have any "
+                        f"'{specs_type}' mappings in '{ecosystem}'!"
+                    )
+                    if next(
+                        mapping.iter_specs_by_id(
+                            dep_str, package_manager, resolve_with_registry=self.registry
+                        ),
+                        None,
+                    ):
                         msg += (
                             " There are mappings available in other categories, though."
                             " Is this dependency in the right category?"
@@ -226,11 +271,13 @@ class External:
         self,
         ecosystem: str,
         key: ExternalKeys | None = None,
+        group_name: str | None = None,
         package_manager: str | None = None,
     ) -> list[str]:
         return self._map_install_deps_impl(
             ecosystem=ecosystem,
             key=key,
+            group_name=group_name,
             package_manager=package_manager,
             as_install_command=False,
         )
@@ -247,11 +294,13 @@ class External:
             "optional_dependencies",
         ]
         | None = None,
+        group_name: str | None = None,
         package_manager: str | None = None,
     ) -> list[str]:
         return self._map_install_deps_impl(
             ecosystem=ecosystem,
             key=key,
+            group_name=group_name,
             package_manager=package_manager,
             as_install_command=True,
         )
