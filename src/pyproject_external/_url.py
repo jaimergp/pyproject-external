@@ -4,13 +4,69 @@
 """
 Parse dep: dependencies
 """
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from urllib.parse import unquote
 
 from packageurl import PackageURL
 
+from ._constants import VALID_INTERFACES, VALID_LANGUAGES
+
+if TYPE_CHECKING:
+    from typing import AnyStr, ClassVar
+
+    try:
+        from typing import Self
+    except ImportError:
+        from typing_extensions import Self
+
 
 class DepURL(PackageURL):
-    SCHEME = "dep"
+    SCHEME: ClassVar[str] = "dep"
+
+    def __new__(
+        cls,
+        type: AnyStr | None = None,
+        namespace: AnyStr | None = None,
+        name: AnyStr | None = None,
+        version: AnyStr | None = None,
+        qualifiers: AnyStr | dict[str, str] | None = None,
+        subpath: AnyStr | None = None,
+    ) -> Self:
+        # Validate virtual types _before_ the namedtuple is created
+        if type == "virtual":
+            # names are normalized to lowercase
+            name = name.lower()
+            if namespace == "compiler":
+                if name not in VALID_LANGUAGES:
+                    raise ValueError(
+                        "'dep:virtual/compiler/*' only accepts the following "
+                        f"languages as 'name': {VALID_LANGUAGES}"
+                    )
+            elif namespace == "interface":
+                if name not in VALID_INTERFACES:
+                    raise ValueError(
+                        "'dep:virtual/interface/*' only accepts the following "
+                        f"interfaces as 'name': {VALID_INTERFACES}"
+                    )
+            else:
+                raise ValueError(
+                    "'dep:virtual/*' only accepts 'compiler' or 'interface' as namespace."
+                )
+
+        inst = super().__new__(
+            cls,
+            type=type,
+            namespace=namespace,
+            name=name,
+            version=version,
+            qualifiers=qualifiers,
+            subpath=subpath,
+        )
+        return inst
+
 
     def to_string(self) -> str:
         # Parent class forces quoting on qualifiers and some others, we don't want that.
