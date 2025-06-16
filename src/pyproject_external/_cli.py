@@ -4,7 +4,6 @@ import logging
 import shlex
 import tarfile
 from enum import Enum
-from functools import cache
 from pathlib import Path
 from typing import Annotated
 
@@ -13,7 +12,6 @@ try:
 except ImportError:
     import tomli as tomllib
 
-import distro
 import tomli_w
 import typer
 from rich import print as rprint
@@ -21,7 +19,8 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.markup import escape
 
-from . import External, Mapping, Ecosystems
+# Only import from __init__ to make sure the only uses the public interface
+from . import External, detect_ecosystem, detect_ecosystem_and_package_manager
 
 
 logging.basicConfig(
@@ -31,43 +30,6 @@ logging.basicConfig(
     handlers=[RichHandler(console=Console(stderr=True))],
 )
 log = logging.getLogger(__name__)
-
-
-@cache
-def _known_ecosystems() -> Ecosystems:
-    return Ecosystems.from_default()
-
-
-@cache
-def _remote_mapping(ecosystem_or_url: str) -> Mapping:
-    if ecosystem_or_url.startswith(("http://", "https://")):
-        return Mapping.from_url(ecosystem_or_url)
-    return Mapping.from_default(ecosystem_or_url)
-
-
-def _detect_ecosystem(package_manager: str) -> str:
-    for ecosystem, mapping in _known_ecosystems().iter_items():
-        mapping = _remote_mapping(mapping["mapping"])
-        try:
-            mapping.get_package_manager(package_manager)
-        except ValueError:
-            continue
-        else:
-            return ecosystem
-    raise ValueError(f"No ecosystem detected for package manager '{package_manager}'")
-
-
-def _detect_ecosystem_and_package_manager() -> tuple[str, str]:
-    for name in (distro.id(), distro.like()):
-        if name == "darwin":
-            return "homebrew", "brew"
-        mapping = _known_ecosystems().get_mapping(name, default=None)
-        if mapping:
-            return name, mapping.package_managers[0]["name"]
-
-    log.warning("No support for distro %s yet", distro.id())
-    # FIXME
-    return "fedora", "dnf"
 
 
 def _read_pyproject_from_sdist(path: Path) -> str:
@@ -139,9 +101,9 @@ def main(
         return
 
     if package_manager:
-        ecosystem = _detect_ecosystem(package_manager)
+        ecosystem = detect_ecosystem(package_manager)
     else:
-        ecosystem, package_manager = _detect_ecosystem_and_package_manager()
+        ecosystem, package_manager = detect_ecosystem_and_package_manager()
     log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
     if output == _OutputChoices.MAPPED_TABLE:
         mapped_dict = external.to_dict(mapped_for=ecosystem, package_manager=package_manager)

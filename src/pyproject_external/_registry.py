@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from collections import UserDict
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -352,3 +353,15 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         if not set(value).intersection("<>=!~"):
             return f"==={value}"
         return value
+
+
+@cache
+def default_ecosystems() -> Ecosystems:
+    return Ecosystems.from_default()
+
+
+@cache
+def remote_mapping(ecosystem_or_url: str) -> Mapping:
+    if ecosystem_or_url.startswith(("http://", "https://")):
+        return Mapping.from_url(ecosystem_or_url)
+    return Mapping.from_default(ecosystem_or_url)
