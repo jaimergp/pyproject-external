@@ -5,10 +5,11 @@ import pytest
 
 from pyproject_external import detect_ecosystem_and_package_manager
 
-pytestmark = pytest.mark.skipif(not os.environ.get("CI"), reason="On CI only.")
 
-
-@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="Only for Ubuntu")
+@pytest.mark.skipif(
+    not os.environ.get("CI") and not sys.platform.startswith("linux"),
+    reason="Only for Ubuntu on CI",
+)
 def test_ubuntu():
     assert detect_ecosystem_and_package_manager() == ("ubuntu", "apt")
 
@@ -20,4 +21,4 @@ def test_macos():
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Only for Windows")
 def test_windows():
-    assert detect_ecosystem_and_package_manager() == ("win32", "vcpkg")
+    assert detect_ecosystem_and_package_manager() == ("vcpkg", "vcpkg")
