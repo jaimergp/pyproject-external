@@ -21,7 +21,7 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.markup import escape
 
-from . import External, Mapping, Ecosystems
+from . import Config, External, Mapping, Ecosystems
 
 
 logging.basicConfig(
@@ -111,7 +111,7 @@ def main(
     package_manager: Annotated[
         str,
         typer.Option(help="If given, use this package manager rather than auto-detect one."),
-    ] = "",
+    ] = Config.load_user_config().preferred_package_manager or "",
 ) -> None:
     package = Path(package)
     if package.is_file():
