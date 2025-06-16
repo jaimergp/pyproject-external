@@ -20,7 +20,7 @@ from rich.logging import RichHandler
 from rich.markup import escape
 
 # Only import from __init__ to make sure the only uses the public interface
-from . import External, detect_ecosystem, detect_ecosystem_and_package_manager
+from . import External, find_ecosystem_for_package_manager, detect_ecosystem_and_package_manager
 
 
 logging.basicConfig(
@@ -101,7 +101,7 @@ def main(
         return
 
     if package_manager:
-        ecosystem = detect_ecosystem(package_manager)
+        ecosystem = find_ecosystem_for_package_manager(package_manager)
     else:
         ecosystem, package_manager = detect_ecosystem_and_package_manager()
     log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)

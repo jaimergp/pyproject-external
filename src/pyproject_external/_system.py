@@ -7,7 +7,7 @@ from ._registry import default_ecosystems, remote_mapping
 log = logging.getLogger(__name__)
 
 
-def detect_ecosystem(package_manager: str) -> str:
+def find_ecosystem_for_package_manager(package_manager: str) -> str:
     for ecosystem, mapping in default_ecosystems().iter_items():
         mapping = remote_mapping(mapping["mapping"])
         try:
@@ -16,7 +16,7 @@ def detect_ecosystem(package_manager: str) -> str:
             continue
         else:
             return ecosystem
-    raise ValueError(f"No ecosystem detected for package manager '{package_manager}'")
+    raise ValueError(f"No ecosystem found for package manager '{package_manager}'")
 
 
 def detect_ecosystem_and_package_manager() -> tuple[str, str]:
