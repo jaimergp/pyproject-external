@@ -10,7 +10,7 @@ pytestmark = pytest.mark.skipif(not os.environ.get("CI"), reason="On CI only.")
 
 @pytest.mark.skipif(not sys.platform.startswith("linux"), reason="Only for Ubuntu")
 def test_ubuntu():
-    assert detect_ecosystem_and_package_manager() == ("ubuntu", "apt-get")
+    assert detect_ecosystem_and_package_manager() == ("ubuntu", "apt")
 
 
 @pytest.mark.skipif(sys.platform != "darwin", reason="Only for macOS")
