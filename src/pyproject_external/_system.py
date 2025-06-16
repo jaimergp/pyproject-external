@@ -20,13 +20,12 @@ def find_ecosystem_for_package_manager(package_manager: str) -> str:
 
 
 def detect_ecosystem_and_package_manager() -> tuple[str, str]:
-    for name in (distro.id(), distro.like()):
+    distro_id = distro.id()
+    for name in (distro_id, *distro.like().split()):
         if name == "darwin":
             return "homebrew", "brew"
         mapping = default_ecosystems().get_mapping(name, default=None)
         if mapping:
             return name, mapping.package_managers[0]["name"]
 
-    log.warning("No support for distro %s yet", distro.id())
-    # FIXME
-    return "fedora", "dnf"
+    raise ValueError(f"No support for platform '{distro_id}' yet!")
