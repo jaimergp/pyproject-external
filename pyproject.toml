@@ -51,6 +51,9 @@ platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
 [tool.pixi.pypi-dependencies]
 pyproject-external = { path = ".", editable = true }
 
+[tool.pixi.tasks]
+cli = "python -m pyproject_external"
+
 [tool.pixi.feature.pre-commit.dependencies]
 pre-commit = "*"
 [tool.pixi.feature.pre-commit.tasks]

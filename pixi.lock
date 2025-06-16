@@ -2207,7 +2207,7 @@ packages:
 - pypi: .
   name: pyproject-external
   version: 0.0.1
-  sha256: 7b2984dbedfeda735127f428bb705041edd6927202c4acdf36a0c1bbd0435348
+  sha256: 5323fee4fa54b15628d3c6199c25eb5897a7a9705508951442b7d19bc1d0b073
   requires_dist:
   - requests
   - jsonschema

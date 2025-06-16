@@ -110,7 +110,7 @@ def main(
     ] = _OutputChoices.RAW,
     package_manager: Annotated[
         str,
-        typer.Option(help="If given, use this package manager rather than auto-detect one."),
+        typer.Option(help="If given, use this package manager rather than the auto-detected one."),
     ] = Config.load_user_config().preferred_package_manager or "",
 ) -> None:
     package = Path(package)
