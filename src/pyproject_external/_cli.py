@@ -20,7 +20,12 @@ from rich.logging import RichHandler
 from rich.markup import escape
 
 # Only import from __init__ to make sure the only uses the public interface
-from . import External, find_ecosystem_for_package_manager, detect_ecosystem_and_package_manager
+from . import (
+    Config,
+    External,
+    find_ecosystem_for_package_manager,
+    detect_ecosystem_and_package_manager,
+)
 
 
 logging.basicConfig(
@@ -72,8 +77,8 @@ def main(
     ] = _OutputChoices.RAW,
     package_manager: Annotated[
         str,
-        typer.Option(help="If given, use this package manager rather than auto-detect one."),
-    ] = "",
+        typer.Option(help="If given, use this package manager rather than the auto-detected one."),
+    ] = Config.load_user_config().preferred_package_manager or "",
 ) -> None:
     package = Path(package)
     if package.is_file():

@@ -2,6 +2,9 @@
 # SPDX-FileCopyrightText: 2025 Quansight Labs
 from typing import Final
 
+APP_NAME: Final[str] = "pyproject-external"
+APP_AUTHOR: Final[str] = "pyproject-external"
+APP_CONFIG_FILENAME: Final[str] = "config.toml"
 DEFAULT_ECOSYSTEMS_SCHEMA_URL: Final[str] = (
     "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/main/"
     "schemas/known-ecosystems.schema.json"

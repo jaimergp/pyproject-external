@@ -4,49 +4,17 @@
 """
 Parse dep: dependencies
 """
+from urllib.parse import unquote
 
-from packageurl import PackageURL, normalize
+from packageurl import PackageURL
 
 
 class DepURL(PackageURL):
-    # TODO: Needs https://github.com/package-url/packageurl-python/pull/184
     SCHEME = "dep"
 
     def to_string(self) -> str:
-        """
-        Return a dep string built from components.
-        """
-        type, namespace, name, version, qualifiers, subpath = normalize(  # NOQA
-            self.type,
-            self.namespace,
-            self.name,
-            self.version,
-            self.qualifiers,
-            self.subpath,
-            encode=False,
-        )
-
-        purl = [f"{self.SCHEME}:", type, "/"]
-
-        if namespace:
-            purl.append(namespace)
-            purl.append("/")
-
-        purl.append(name)
-
-        if version:
-            purl.append("@")
-            purl.append(version)
-
-        if qualifiers:
-            purl.append("?")
-            purl.append(qualifiers)
-
-        if subpath:
-            purl.append("#")
-            purl.append(subpath)
-
-        return "".join(purl)
+        # Parent class forces quoting on qualifiers and some others, we don't want that.
+        return unquote(super().to_string())
 
     def _version_as_vers(self) -> str:
         if set(self.version).intersection("<>=!~*"):
