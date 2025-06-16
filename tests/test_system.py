@@ -1,14 +1,14 @@
-import os
 import sys
 
+import distro
 import pytest
 
 from pyproject_external import detect_ecosystem_and_package_manager
 
 
 @pytest.mark.skipif(
-    not os.environ.get("CI") and not sys.platform.startswith("linux"),
-    reason="Only for Ubuntu on CI",
+    distro.id() != "ubuntu",
+    reason="Only for Ubuntu",
 )
 def test_ubuntu():
     assert detect_ecosystem_and_package_manager() == ("ubuntu", "apt")
