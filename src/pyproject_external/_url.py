@@ -36,25 +36,14 @@ class DepURL(PackageURL):
         subpath: AnyStr | None = None,
     ) -> Self:
         # Validate virtual types _before_ the namedtuple is created
-        if type == "virtual":
-            # names are normalized to lowercase
-            name = name.lower()
-            if namespace == "compiler":
-                if name not in VALID_LANGUAGES:
-                    raise ValueError(
-                        "'dep:virtual/compiler/*' only accepts the following "
-                        f"languages as 'name': {VALID_LANGUAGES}"
-                    )
-            elif namespace == "interface":
-                if name not in VALID_INTERFACES:
-                    raise ValueError(
-                        "'dep:virtual/interface/*' only accepts the following "
-                        f"interfaces as 'name': {VALID_INTERFACES}"
-                    )
-            else:
+        if type.lower() == "virtual":
+            namespace = namespace.lower()
+            if namespace not in ("compiler", "interface"):
                 raise ValueError(
                     "'dep:virtual/*' only accepts 'compiler' or 'interface' as namespace."
                 )
+            # names are normalized to lowercase
+            name = name.lower()
 
         inst = super().__new__(
             cls,
