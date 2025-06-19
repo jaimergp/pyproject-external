@@ -306,11 +306,14 @@ class External:
             self._validate_url(url, canonical=canonical)
 
     def _validate_url(self, url: DepURL, canonical: bool = True) -> None:
-        unique_ids = set(DepURL.from_string(id_) for id_ in self.registry.iter_unique_ids())
-        if url not in unique_ids:
-            choices = [str(id_) for id_ in unique_ids]
+        unique_urls = set()
+        unique_strs = []
+        for id_ in self.registry.iter_unique_ids():
+            unique_strs.append(id_)
+            unique_urls.add(DepURL.from_string(id_))
+        if url not in unique_urls:
             most_similar = sorted(
-                choices,
+                unique_strs,
                 key=lambda i: SequenceMatcher(None, str(url), i).ratio(),
                 reverse=True,
             )[:5]
