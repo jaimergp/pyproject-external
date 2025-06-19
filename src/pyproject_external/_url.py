@@ -12,8 +12,6 @@ from urllib.parse import unquote
 
 from packageurl import PackageURL
 
-from ._constants import VALID_INTERFACES, VALID_LANGUAGES
-
 if TYPE_CHECKING:
     from typing import AnyStr, ClassVar
 
@@ -55,7 +53,6 @@ class DepURL(PackageURL):
             subpath=subpath,
         )
         return inst
-
 
     def to_string(self) -> str:
         # Parent class forces quoting on qualifiers and some others, we don't want that.

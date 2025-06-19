@@ -29,23 +29,3 @@ DEFAULT_REGISTRY_URL: Final[str] = (
     "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/main/"
     "data/registry.json"
 )
-VALID_LANGUAGES: Final[tuple[str]] = (
-    "c",
-    "c-sharp",
-    "c++",
-    "cpp",  # alias of c++
-    "cxx",  # alias of c++
-    "cuda",
-    "fortran",
-    "go",
-    "obj-c",
-    "objective-c",  # alias of obj-c
-    "rust",
-    "swift",
-)
-VALID_INTERFACES: Final[tuple[str]] = (
-    "blas",
-    "lapack",
-    "mpi",
-    "openmp",
-)
