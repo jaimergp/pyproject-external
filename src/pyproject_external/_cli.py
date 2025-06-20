@@ -101,7 +101,6 @@ def main(
         rprint(escape(tomli_w.dumps({"external": raw_external}).rstrip()))
         return
 
-
     if output == _OutputChoices.NORMALIZED:
         rprint(escape(tomli_w.dumps(external.to_dict())))
         return
