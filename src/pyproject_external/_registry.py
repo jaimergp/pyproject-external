@@ -123,8 +123,10 @@ class Registry(UserDict, _Validated, _FromPathOrUrlOrDefault):
 
     def iter_canonical(self) -> Iterable[dict[str, Any]]:
         for item in self.iter_all():
-            if not item.get("provides") or all(
-                item.startswith("dep:virtual/") for item in item.get("provides")
+            if (
+                item["id"].startswith("dep:virtual/")
+                or not item.get("provides")
+                or all(prov.startswith("dep:virtual/") for prov in item.get("provides"))
             ):
                 yield item
 

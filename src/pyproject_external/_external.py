@@ -324,7 +324,7 @@ class External:
             return
         if canonical:
             canonical_entries = {item["id"] for item in self.registry.iter_canonical()}
-            if url not in canonical_entries:
+            if str(url) not in canonical_entries:
                 for d in self.registry.iter_by_id(url):
                     if provides := d.get("provides"):
                         references = ", ".join(provides)
