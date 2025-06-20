@@ -4,6 +4,7 @@ import logging
 import os
 import shlex
 import subprocess
+import sys
 import tarfile
 from enum import Enum
 from pathlib import Path
