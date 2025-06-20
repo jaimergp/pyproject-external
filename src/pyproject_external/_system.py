@@ -103,7 +103,7 @@ def activated_conda_env(
         deactivate_cmd = [
             package_manager,
             "shell",
-            "deactivate"
+            "deactivate",
             "--prefix",
             prefix,
             "--shell",
@@ -136,14 +136,16 @@ def activated_conda_env(
         hookfile = tmp_path / f"__hook.{script_ext}"
         # 'activate_cmd' prints the shell logic that would have run in the
         # real 'activate' command
-        hook = subprocess.check_output(activate_cmd, text=True, env=environ)
+        with _catch_activation_errors(True):
+            hook = subprocess.check_output(activate_cmd, text=True, env=environ)
         outputfile = tmp_path / "__output.json"
         hookfile.write_text(
             f"{call}{hook}\n"
             # Report the changes in os.environ to a temporary file
             + f'{call}python{exe} -c "import json, os; print(json.dumps(dict(**os.environ)))" > "{outputfile}"'
         )
-        subprocess.run([shell, *args, hookfile], check=True, env=environ)
+        with _catch_activation_errors(True):
+            subprocess.run([shell, *args, hookfile], check=True, env=environ)
         # Recover and apply the os.environ changes to the running test; delete keys not present
         # in the activated environment, add/overwrite the ones that do appear.
         activated = json.loads(outputfile.read_text())
@@ -161,6 +163,23 @@ def activated_conda_env(
         with TemporaryDirectory(prefix="pyproject-external-conda-deactivator-") as tmp_path:
             tmp_path = Path(tmp_path)
             hookfile = tmp_path / f"__hook.{script_ext}"
-            hook = subprocess.check_output(deactivate_cmd, text=True, env=environ)
+
+            with _catch_activation_errors(False):
+                hook = subprocess.check_output(deactivate_cmd, text=True, env=environ)
+
             hookfile.write_text(f"{call}{hook}\n")
-            subprocess.run([shell, *args, hookfile], check=False, env=environ)
+
+            with _catch_activation_errors(False):
+                subprocess.run([shell, *args, hookfile], check=False, env=environ)
+
+
+def _catch_activation_errors(activate=True):
+    try:
+        yield
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(
+            f"Could not {'activate' if activate else 'deactivate'} conda environment!\n"
+            f"Return code: {exc.returncode}\n"
+            f"Stdout:\n{exc.stdout}\n"
+            f"Stderr:\n{exc.stderr}\n"
+        ) from exc
