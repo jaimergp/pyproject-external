@@ -173,6 +173,7 @@ def activated_conda_env(
                 subprocess.run([shell, *args, hookfile], check=False, env=environ)
 
 
+@contextmanager
 def _catch_activation_errors(activate=True):
     try:
         yield
