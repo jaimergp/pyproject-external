@@ -5,7 +5,7 @@ import sys
 import distro
 import pytest
 
-from pyproject_external import detect_ecosystem_and_package_manager
+from pyproject_external import activated_conda_env, detect_ecosystem_and_package_manager
 
 
 @pytest.mark.skipif(
@@ -36,3 +36,12 @@ def test_pixi(monkeypatch):
     if not os.environ.get("PIXI_EXE"):
         monkeypatch.setenv("PIXI_EXE", shutil.which("pixi"))
     assert detect_ecosystem_and_package_manager() == ("conda-forge", "pixi")
+
+
+@pytest.mark.parametrize("tool", ("conda", "mamba", "micromamba", "pixi"))
+def test_activated_conda_env(tool):
+    if not shutil.which(tool):
+        pytest.skip()
+    with activated_conda_env(tool, sys.prefix) as env:
+        assert any(p.startswith(sys.prefix) for p in env["PATH"].split(os.pathsep))
+        assert sorted(env) != sorted(os.environ)
