@@ -56,6 +56,7 @@ class _OutputChoices(Enum):
     MAPPED_LIST = "mapped-list"
     COMMAND = "command"
 
+
 def _pyproject_text(package: Path) -> str:
     if package.is_file():
         if not package.name.lower().endswith(".tar.gz"):
@@ -161,12 +162,12 @@ def install(
         ecosystem, package_manager = detect_ecosystem_and_package_manager()
     log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
     cmd = external.install_command(ecosystem, package_manager=package_manager)
-
+    env = os.environ.copy()
     # Install external dependencies
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, env=env)
 
     # Build wheel and install with pip
-    subprocess.run([sys.executable, "-m", "pip", "install", package], check=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", package], check=True, env=env)
 
 
 def entry_point() -> None:
