@@ -162,12 +162,13 @@ def install(
         ecosystem, package_manager = detect_ecosystem_and_package_manager()
     log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
     cmd = external.install_command(ecosystem, package_manager=package_manager)
-    env = os.environ.copy()
-    # Install external dependencies
-    subprocess.run(cmd, check=True, env=env)
-
-    # Build wheel and install with pip
-    subprocess.run([sys.executable, "-m", "pip", "install", package], check=True, env=env)
+    try:
+        # 1. Install external dependencies
+        subprocess.run(cmd, check=True)
+        # 2. Build wheel and install with pip
+        subprocess.run([sys.executable, "-m", "pip", "install", package], check=True)
+    except subprocess.CalledProcessError as exc:
+        sys.exit(exc.returncode)  # avoid unnecessary typer pretty traceback
 
 
 def entry_point() -> None:
