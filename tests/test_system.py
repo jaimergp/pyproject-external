@@ -1,3 +1,5 @@
+import os
+import shutil
 import sys
 
 import distro
@@ -25,3 +27,12 @@ def test_macos(monkeypatch):
 def test_windows(monkeypatch):
     monkeypatch.delenv("CONDA_PREFIX")
     assert detect_ecosystem_and_package_manager() == ("vcpkg", "vcpkg")
+
+
+@pytest.mark.skipif(not shutil.which("pixi"), reason="Needs Pixi")
+def test_pixi(monkeypatch):
+    if not os.environ.get("CONDA_PREFIX"):
+        monkeypatch.setenv("CONDA_PREFIX", sys.prefix)
+    if not os.environ.get("PIXI_EXE"):
+        monkeypatch.setenv("PIXI_EXE", shutil.which("pixi"))
+    assert detect_ecosystem_and_package_manager() == ("conda-forge", "pixi")
