@@ -166,13 +166,13 @@ def install(
     install_external_cmd = external.install_command(ecosystem, package_manager=package_manager)
     install_pip_cmd = [sys.executable, "-m", "pip", "install", package]
     try:
+        # 1. Install external dependencies
+        subprocess.run(install_external_cmd, check=True)
         with (
             activated_conda_env(package_manager=package_manager)
             if ecosystem == "conda-forge"
             else nullcontext(os.environ) as env
         ):
-            # 1. Install external dependencies
-            subprocess.run(install_external_cmd, check=True, env=env)
             # 2. Build wheel and install with pip
             subprocess.run(install_pip_cmd, check=True, env=env)
     except subprocess.CalledProcessError as exc:
