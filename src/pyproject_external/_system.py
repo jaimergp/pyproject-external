@@ -179,6 +179,6 @@ def _catch_activation_errors(activate=True):
         raise RuntimeError(
             f"Could not {'activate' if activate else 'deactivate'} conda environment!\n"
             f"Return code: {exc.returncode}\n"
-            (f"Stdout:\n{exc.stdout}\n" if exc.stdout else "")
-            (f"Stderr:\n{exc.stderr}\n" if exc.stderr else "")
+            + (f"Stdout:\n{exc.stdout}\n" if exc.stdout else "")
+            + (f"Stderr:\n{exc.stderr}\n" if exc.stderr else "")
         ) from exc
