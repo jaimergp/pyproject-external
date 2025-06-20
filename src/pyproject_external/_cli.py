@@ -93,13 +93,14 @@ def main(
     if not raw_external:
         raise typer.BadParameter("Package's pyproject.toml does not contain an 'external' table.")
 
+    external = External.from_pyproject_data(pyproject)
+    if validate:
+        external.validate()
+
     if output == _OutputChoices.RAW:
         rprint(escape(tomli_w.dumps({"external": raw_external}).rstrip()))
         return
 
-    external = External.from_pyproject_data(pyproject)
-    if validate:
-        external.validate()
 
     if output == _OutputChoices.NORMALIZED:
         rprint(escape(tomli_w.dumps(external.to_dict())))
