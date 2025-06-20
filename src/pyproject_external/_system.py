@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2025 Quansight Labs
 import logging
+import os
 import platform
 import shutil
+from pathlib import Path
 
 import distro
 
@@ -24,6 +26,13 @@ def find_ecosystem_for_package_manager(package_manager: str) -> str:
 
 
 def detect_ecosystem_and_package_manager() -> tuple[str, str]:
+    if conda_prefix := os.environ.get("CONDA_PREFIX"):
+        # An active conda environment is present; probably want to use that
+        if Path(conda_prefix).name == os.environ.get("PIXI_ENVIRONMENT_NAME"):
+            return "conda", "pixi"
+        for name in ("conda", "mamba", "micromamba"):
+            if shutil.which(name):
+                return "conda", name
     platform_system = platform.system()
     if platform_system == "Linux":
         distro_id = distro.id()
@@ -37,7 +46,7 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
         return "homebrew", "brew"
     if platform_system == "Windows" or platform_system.lower().startswith(("cygwin", "msys")):
         return "vcpkg", "vcpkg"  # TODO: Determine which one has the most complete mapping
-    # Fallback to the conda ecosystem if available
+    # Fallback to the conda ecosystem if available, even if no active environments are found
     for name in ("conda", "pixi", "mamba", "micromamba"):
         if shutil.which(name):
             return "conda", name
