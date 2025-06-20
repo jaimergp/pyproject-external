@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass, field, asdict
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -300,22 +301,37 @@ class External:
             as_install_command=True,
         )
 
-    def validate(self, registry: bool = True, canonical: bool = True) -> None:
-        if not registry and not canonical:
-            return
+    def validate(self, canonical: bool = True) -> None:
         for url in self.iter():
-            if registry and url not in self.registry.iter_unique_urls():
-                log.warning(f"Dep URL {url} is not recognized in the central registry.")
-            if canonical:
-                canonical_entries = {item["id"] for item in self.registry.iter_canonical()}
-                if url not in canonical_entries:
-                    for d in self.registry.iter_by_id(url):
-                        if provides := d.get("provides"):
-                            references = ", ".join(provides)
-                            break
-                    else:
-                        references = None
-                    msg = f"Dep URL {url} is not using a canonical reference."
-                    if references:
-                        msg += f" Try with one of: {references}."
-                    log.warning(msg)
+            self._validate_url(url, canonical=canonical)
+
+    def _validate_url(self, url: DepURL, canonical: bool = True) -> None:
+        unique_urls = set()
+        unique_strs = []
+        for id_ in self.registry.iter_unique_ids():
+            unique_strs.append(id_)
+            unique_urls.add(DepURL.from_string(id_))
+        if url not in unique_urls:
+            most_similar = sorted(
+                unique_strs,
+                key=lambda i: SequenceMatcher(None, str(url), i).ratio(),
+                reverse=True,
+            )[:5]
+            log.warning(
+                f"Dep URL '{url}' is not recognized in the central registry. "
+                f"Did you mean any of {most_similar}'?"
+            )
+            return
+        if canonical:
+            canonical_entries = {item["id"] for item in self.registry.iter_canonical()}
+            if url not in canonical_entries:
+                for d in self.registry.iter_by_id(url):
+                    if provides := d.get("provides"):
+                        references = ", ".join(provides)
+                        break
+                else:
+                    references = None
+                msg = f"Dep URL '{url}' is not using a canonical reference."
+                if references:
+                    msg += f" Try with one of: {references}."
+                log.warning(msg)
