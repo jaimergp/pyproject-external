@@ -6,6 +6,7 @@ import shlex
 import subprocess
 import sys
 import tarfile
+from contextlib import nullcontext
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
@@ -26,6 +27,7 @@ from rich.markup import escape
 from . import (
     Config,
     External,
+    activated_conda_env,
     find_ecosystem_for_package_manager,
     detect_ecosystem_and_package_manager,
 )
@@ -161,12 +163,18 @@ def install(
     else:
         ecosystem, package_manager = detect_ecosystem_and_package_manager()
     log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
-    cmd = external.install_command(ecosystem, package_manager=package_manager)
+    install_external_cmd = external.install_command(ecosystem, package_manager=package_manager)
+    install_pip_cmd = [sys.executable, "-m", "pip", "install", package]
     try:
-        # 1. Install external dependencies
-        subprocess.run(cmd, check=True)
-        # 2. Build wheel and install with pip
-        subprocess.run([sys.executable, "-m", "pip", "install", package], check=True)
+        with (
+            activated_conda_env(package_manager=package_manager)
+            if ecosystem == "conda-forge"
+            else nullcontext(os.environ) as env
+        ):
+            # 1. Install external dependencies
+            subprocess.run(install_external_cmd, check=True, env=env)
+            # 2. Build wheel and install with pip
+            subprocess.run(install_pip_cmd, check=True, env=env)
     except subprocess.CalledProcessError as exc:
         sys.exit(exc.returncode)  # avoid unnecessary typer pretty traceback
 

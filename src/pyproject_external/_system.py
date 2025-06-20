@@ -1,10 +1,16 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2025 Quansight Labs
 import logging
+import json
 import os
 import platform
 import shutil
+import subprocess
+import sys
+from collections.abc import Iterable
+from contextlib import contextmanager
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import distro
 
@@ -59,3 +65,102 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
             return "conda-forge", name
 
     raise ValueError(f"No support for platform '{distro_id}' yet!")
+
+
+@contextmanager
+def activated_conda_env(
+    package_manager: str, prefix: str | None = None
+) -> Iterable[dict[str, str]]:
+    """
+    Mimics environment activation by generating the activation 'hook' (the code
+    that runs when a user types 'micromamba activate <prefix>') and a little Python
+    reporter that writes the new and modified to a json file. This file is then
+    read and applied to the test scope with 'monkeypatch'.
+    """
+    if not prefix:
+        prefix = os.environ.get("CONDA_PREFIX", sys.prefix)
+    if sys.platform == "win32":
+        shell = "cmd.exe"
+        script_ext = "bat"
+        exe = ".exe"
+        call = "CALL "
+        args = ("/D", "/C")
+    else:
+        shell = "bash"
+        script_ext = "sh"
+        exe = call = ""
+        args = ()
+    if package_manager in ("micromamba", "mamba"):
+        activate_cmd = [
+            package_manager,
+            "shell",
+            "activate",
+            "--prefix",
+            prefix,
+            "--shell",
+            shell,
+        ]
+        deactivate_cmd = [
+            package_manager,
+            "shell",
+            "deactivate"
+            "--prefix",
+            prefix,
+            "--shell",
+            shell,
+        ]
+    elif package_manager == "conda":
+        activate_cmd = [
+            "conda",
+            f"shell.{shell}",
+            "activate",
+            prefix,
+        ]
+        deactivate_cmd = [
+            "conda",
+            f"shell.{shell}",
+            "deactivate",
+            prefix,
+        ]
+    elif package_manager == "pixi":
+        activate_cmd = [
+            "pixi",
+            "shell-hook",
+            "--shell",
+            "cmd" if shell == "cmd.exe" else shell,
+        ]
+        deactivate_cmd = []
+    environ = os.environ.copy()
+    with TemporaryDirectory(prefix="pyproject-external-conda-activator-") as tmp_path:
+        tmp_path = Path(tmp_path)
+        hookfile = tmp_path / f"__hook.{script_ext}"
+        # 'activate_cmd' prints the shell logic that would have run in the
+        # real 'activate' command
+        hook = subprocess.check_output(activate_cmd, text=True, env=environ)
+        outputfile = tmp_path / "__output.json"
+        hookfile.write_text(
+            f"{call}{hook}\n"
+            # Report the changes in os.environ to a temporary file
+            + f'{call}python{exe} -c "import json, os; print(json.dumps(dict(**os.environ)))" > "{outputfile}"'
+        )
+        subprocess.run([shell, *args, hookfile], check=True, env=environ)
+        # Recover and apply the os.environ changes to the running test; delete keys not present
+        # in the activated environment, add/overwrite the ones that do appear.
+        activated = json.loads(outputfile.read_text())
+
+    for key in os.environ:
+        if key not in activated:
+            environ.pop(key)
+    for key, value in activated.items():
+        environ[key] = value
+
+    yield environ
+
+    # Deactivate directly in case there were filesystem changes
+    if deactivate_cmd:
+        with TemporaryDirectory(prefix="pyproject-external-conda-deactivator-") as tmp_path:
+            tmp_path = Path(tmp_path)
+            hookfile = tmp_path / f"__hook.{script_ext}"
+            hook = subprocess.check_output(deactivate_cmd, text=True, env=environ)
+            hookfile.write_text(f"{call}{hook}\n")
+            subprocess.run([shell, *args, hookfile], check=False, env=environ)
