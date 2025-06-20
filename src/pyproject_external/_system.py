@@ -118,7 +118,6 @@ def activated_conda_env(
             "conda",
             f"shell.{shell}",
             "deactivate",
-            prefix,
         ]
     elif package_manager == "pixi":
         activate_cmd = [
