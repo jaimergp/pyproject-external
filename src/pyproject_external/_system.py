@@ -29,10 +29,10 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
     if conda_prefix := os.environ.get("CONDA_PREFIX"):
         # An active conda environment is present; probably want to use that
         if Path(conda_prefix).name == os.environ.get("PIXI_ENVIRONMENT_NAME"):
-            return "conda", "pixi"
+            return "conda-forge", "pixi"
         for name in ("conda", "mamba", "micromamba"):
             if shutil.which(name):
-                return "conda", name
+                return "conda-forge", name
     platform_system = platform.system()
     if platform_system == "Linux":
         distro_id = distro.id()
@@ -49,5 +49,5 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
     # Fallback to the conda ecosystem if available, even if no active environments are found
     for name in ("conda", "pixi", "mamba", "micromamba"):
         if shutil.which(name):
-            return "conda", name
+            return "conda-forge", name
     raise ValueError(f"No support for platform '{distro_id}' yet!")
