@@ -48,13 +48,13 @@ class External:
         self._registry = None
         for name, urls_or_group in asdict(self).items():
             if "optional" in name:
-                setattr(self, "_raw_" + name, {})
-                for group_name, urls in urls_or_group.items():
-                    getattr(self, "_raw_" + name)[group_name] = urls
-                    getattr(self, name)[group_name] = [DepURL.from_string(url) for url in urls]
+                new_group = {
+                    group_name: [DepURL.from_string(url) for url in urls]
+                    for group_name, urls in urls_or_group.items()
+                }
+                setattr(self, name, new_group)
             else:
                 # coerce to DepURL and validate
-                setattr(self, "_raw_" + name, urls_or_group)
                 setattr(self, name, [DepURL.from_string(url) for url in urls_or_group])
 
     @classmethod
