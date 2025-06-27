@@ -83,6 +83,49 @@ pre-commit = ["pre-commit"]
 
 [tool.ruff]
 line-length = 99
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    "W",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # isort
+    "I",
+    # pep8 naming
+    "N",
+    # annotations
+    "ANN",
+    # debugger
+    "T10",
+    # flake8-return
+    "RET",
+]
+ignore = [
+    "ANN002", # Missing type annotation for `*args`
+    "ANN003", # Missing type annotation for `**kwargs`
+    "ANN201", # Missing return type annotation for public function (makes no sense for NoneType return types...)
+    "ANN204", # Missing return type annotation for special method
+    "B905", # zip() without an explicit strict=; incompatible with python<3.12
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D105", # Missing docstring in magic method
+    "D107", # Missing docstring in __init__
+    "D203", # 1 blank line before after class docstring
+    "D204", # 1 blank line required after class docstring
+    "D206", # Docstrings should be indented with spaces; unnecessary when running ruff-format
+    "D211", # No blank line before class
+    "D213", # Multiline summary second line
+    "D413", # 1 black line after parameters
+    "E501", # Line length too long; unnecessary when running ruff-format
+    "W191", # Indentation contains tabs; unnecessary when running ruff-format
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"test_*.py" = ["ANN001"]
 
 [tool.mypy]
 show_error_codes = true
