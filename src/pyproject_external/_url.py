@@ -43,7 +43,7 @@ class DepURL(PackageURL):
             # names are normalized to lowercase
             name = name.lower()
 
-        inst = super().__new__(
+        return super().__new__(
             cls,
             type=type,
             namespace=namespace,
@@ -52,7 +52,6 @@ class DepURL(PackageURL):
             qualifiers=qualifiers,
             subpath=subpath,
         )
-        return inst
 
     def to_string(self) -> str:
         # Parent class forces quoting on qualifiers and some others, we don't want that.

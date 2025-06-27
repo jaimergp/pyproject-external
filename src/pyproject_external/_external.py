@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -13,7 +13,8 @@ except ImportError:
     import tomli as tomllib
 
 if TYPE_CHECKING:
-    from typing import Any, Iterable, Literal, TypeAlias
+    from collections.abc import Iterable
+    from typing import Any, Literal, TypeAlias
 
     try:
         from typing import Self
@@ -71,7 +72,7 @@ class External:
             raise ValueError("Pyproject data does not have an 'external' table.")
 
     @property
-    def registry(self):
+    def registry(self) -> Registry:
         if self._registry is None:
             self._registry = Registry.from_default()
         return self._registry
@@ -124,8 +125,7 @@ class External:
                 "dependencies",
             )
         for category in categories:
-            for dependency in getattr(self, category):
-                yield dependency
+            yield from getattr(self, category)
 
     def iter_optional(
         self,
@@ -245,8 +245,7 @@ class External:
                         )
                     if required:
                         raise ValueError(msg)
-                    else:
-                        log.warning(msg)
+                    log.warning(msg)
 
         if include_python_dev:
             # TODO: handling of non-default Python installs isn't done here,

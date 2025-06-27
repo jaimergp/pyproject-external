@@ -7,4 +7,5 @@ Install a project (building the wheel if necessary) in the desired location.
 help = __doc__
 
 
-def main(): ...
+def main() -> None:
+    print("Not implemented yet.")

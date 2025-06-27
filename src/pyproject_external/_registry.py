@@ -19,21 +19,25 @@ from packaging.specifiers import Specifier
 
 from ._constants import (
     DEFAULT_ECOSYSTEMS_SCHEMA_URL,
-    DEFAULT_MAPPING_SCHEMA_URL,
-    DEFAULT_REGISTRY_SCHEMA_URL,
     DEFAULT_ECOSYSTEMS_URL,
-    DEFAULT_REGISTRY_URL,
+    DEFAULT_MAPPING_SCHEMA_URL,
     DEFAULT_MAPPING_URL_TEMPLATE,
+    DEFAULT_REGISTRY_SCHEMA_URL,
+    DEFAULT_REGISTRY_URL,
 )
 
 if TYPE_CHECKING:
-    from typing import Any, Iterable, Literal
+    from collections.abc import Iterable
+    from typing import Any, Literal, TypeVar
 
     try:
         from typing import Self
     except ImportError:  # py 3.11+ required for Self
         from typing_extensions import Self
 
+    from jsonschema import Validator
+
+    _DefaultType = TypeVar("_DefaultType")
     TBuildHostRun = Literal["build", "host", "run"]
 
 
@@ -44,7 +48,7 @@ class _Validated:
         validators=dict(Draft202012Validator.VALIDATORS),
     )
 
-    def _validator_inst(self, path_or_url: str | None = None):
+    def _validator_inst(self, path_or_url: str | None = None) -> Validator:
         if path_or_url is None and self.default_schema:
             if str(self.default_schema).startswith(("http://", "https://")):
                 r = requests.get(self.default_schema)
@@ -88,14 +92,14 @@ class _FromPathOrUrlOrDefault:
         return cls.from_path(default_source)
 
     @classmethod
-    def from_path(cls, path) -> Self:
+    def from_path(cls, path: str | Path) -> Self:
         with open(path) as f:
             inst = cls(json.load(f))
         inst._path = path
         return inst
 
     @classmethod
-    def from_url(cls, url) -> Self:
+    def from_url(cls, url: str) -> Self:
         r = requests.get(url)
         r.raise_for_status()
         return cls(r.json())
@@ -112,14 +116,13 @@ class Registry(UserDict, _Validated, _FromPathOrUrlOrDefault):
                 seen.add(id_)
                 yield id_
 
-    def iter_by_id(self, key) -> Iterable[dict[str, Any]]:
+    def iter_by_id(self, key: str) -> Iterable[dict[str, Any]]:
         for item in self.iter_all():
             if item["id"] == key:
                 yield item
 
     def iter_all(self) -> Iterable[dict[str, Any]]:
-        for item in self.data["definitions"]:
-            yield item
+        yield from self.data["definitions"]
 
     def iter_canonical(self) -> Iterable[dict[str, Any]]:
         for item in self.iter_all():
@@ -153,18 +156,16 @@ class Ecosystems(UserDict, _Validated, _FromPathOrUrlOrDefault):
     # TODO: These methods might need a better API
 
     def iter_names(self) -> Iterable[tuple[str, dict[Literal["mapping"], str]]]:
-        for name in self.data.get("ecosystems", {}):
-            yield name
+        yield from self.data.get("ecosystems", {})
 
     def iter_items(self) -> Iterable[tuple[str, dict[Literal["mapping"], str]]]:
-        for item in self.data.get("ecosystems", {}).items():
-            yield item
+        yield from self.data.get("ecosystems", {}).items()
 
-    def iter_mappings(self) -> Iterable["Mapping"]:
+    def iter_mappings(self) -> Iterable[Mapping]:
         for name, ecosystem in self.iter_items():
             yield Mapping.from_url(ecosystem["mapping"])
 
-    def get_mapping(self, name: str, default: Any = ...) -> "Mapping":
+    def get_mapping(self, name: str, default: _DefaultType = ...) -> Mapping | _DefaultType:
         for item_name, ecosystem in self.iter_items():
             if name == item_name:
                 return Mapping.from_url(ecosystem["mapping"])
@@ -198,7 +199,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     def package_managers(self) -> list[dict[str, Any]]:
         return self.data.get("package_managers", [])
 
-    def iter_all(self, resolve_specs=True) -> Iterable[dict[str, Any]]:
+    def iter_all(self, resolve_specs: bool = True) -> Iterable[dict[str, Any]]:
         for entry in self.data["mappings"]:
             if resolve_specs:
                 entry = entry.copy()
@@ -244,10 +245,10 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
                 else:
                     yield entry
 
-    def _resolve_specs(self, mapping_entry) -> list[str]:
+    def _resolve_specs(self, mapping_entry: dict[str, Any]) -> list[str]:
         if specs := mapping_entry.get("specs"):
             return specs
-        elif specs_from := mapping_entry.get("specs_from"):
+        if specs_from := mapping_entry.get("specs_from"):
             return self._resolve_specs(next(self.iter_by_id(specs_from)))
         return []
 

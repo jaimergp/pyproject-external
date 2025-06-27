@@ -4,9 +4,9 @@ try:
     import tomllib
 except ImportError:
     import tomli as tomllib
-from pyproject_external import External, DepURL
-
 import pytest
+
+from pyproject_external import DepURL, External
 
 
 def test_external():
