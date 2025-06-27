@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2025 Quansight Labs
-import logging
 import json
+import logging
 import os
 import platform
 import shutil
@@ -171,7 +171,7 @@ def activated_conda_env(
 
 
 @contextmanager
-def _catch_activation_errors(activate=True):
+def _catch_activation_errors(activate: bool = True) -> Iterable[None]:
     try:
         yield
     except subprocess.CalledProcessError as exc:

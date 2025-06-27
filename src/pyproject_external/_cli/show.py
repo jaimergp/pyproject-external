@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2023 Quansight Labs
+"""
+Query PEP 725 [external] metadata from pyproject.toml or source distributions.
+"""
+
 import logging
-import os
 import shlex
-import subprocess
-import sys
-import tarfile
-from contextlib import nullcontext
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
@@ -24,15 +23,15 @@ from rich.logging import RichHandler
 from rich.markup import escape
 
 # Only import from __init__ to make sure the only uses the public interface
-from . import (
+from .. import (
     Config,
     External,
-    activated_conda_env,
-    find_ecosystem_for_package_manager,
     detect_ecosystem_and_package_manager,
+    find_ecosystem_for_package_manager,
 )
+from ._utils import _pyproject_text
 
-
+help = __doc__
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
@@ -42,31 +41,12 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-def _read_pyproject_from_sdist(path: Path) -> str:
-    with tarfile.open(path) as tar:
-        for info in tar.getmembers():
-            name = info.name
-            if "/" in name and name.split("/")[-1] == "pyproject.toml":
-                return tar.extractfile(info).read().decode()
-    raise ValueError("Could not read pyproject.toml file from sdist")
-
-
 class _OutputChoices(Enum):
     RAW = "raw"
     NORMALIZED = "normalized"
     MAPPED_TABLE = "mapped"
     MAPPED_LIST = "mapped-list"
     COMMAND = "command"
-
-
-def _pyproject_text(package: Path) -> str:
-    if package.is_file():
-        if not package.name.lower().endswith(".tar.gz"):
-            raise typer.BadParameter(f"Given package '{package}' is a file, but not a sdist.")
-        return _read_pyproject_from_sdist(package)
-    if package.is_dir():
-        return (package / "pyproject.toml").read_text()
-    raise typer.BadParameter(f"Package {package} is not a valid path.")
 
 
 def main(
@@ -130,64 +110,3 @@ def main(
         print(shlex.join(external.map_dependencies(ecosystem, package_manager=package_manager)))
     else:
         raise typer.BadParameter(f"Unknown value for --output: {output}")
-
-
-def install(
-    package: Annotated[
-        str,
-        typer.Argument(
-            help="Package to build wheel for and then install. "
-            "It can be a path to a pyproject.toml-containing directory, "
-            "or a source distribution."
-        ),
-    ],
-    package_manager: Annotated[
-        str,
-        typer.Option(
-            help="If given, use this package manager to install the external dependencies "
-            "rather than the auto-detected one."
-        ),
-    ] = Config.load_user_config().preferred_package_manager or "",
-) -> None:
-    if not os.environ.get("CI"):
-        raise RuntimeError("This tool can only be used in CI environments. Set CI=1 to override.")
-
-    package = Path(package)
-    pyproject_text = _pyproject_text(package)
-    pyproject = tomllib.loads(pyproject_text)
-    external = External.from_pyproject_data(pyproject)
-    external.validate()
-
-    if package_manager:
-        ecosystem = find_ecosystem_for_package_manager(package_manager)
-    else:
-        ecosystem, package_manager = detect_ecosystem_and_package_manager()
-    log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
-    install_external_cmd = external.install_command(ecosystem, package_manager=package_manager)
-    install_pip_cmd = [sys.executable, "-m", "pip", "install", package]
-    try:
-        # 1. Install external dependencies
-        subprocess.run(install_external_cmd, check=True)
-        with (
-            activated_conda_env(package_manager=package_manager)
-            if ecosystem == "conda-forge"
-            else nullcontext(os.environ) as env
-        ):
-            # 2. Build wheel and install with pip
-            subprocess.run(install_pip_cmd, check=True, env=env)
-    except subprocess.CalledProcessError as exc:
-        sys.exit(exc.returncode)  # avoid unnecessary typer pretty traceback
-
-
-def entry_point() -> None:
-    typer.run(main)
-
-
-def install_entry_point() -> None:
-    typer.run(install)
-
-
-if __name__ == "__main__":
-    import sys
-
-    sys.exit(entry_point())

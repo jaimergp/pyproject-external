@@ -4,9 +4,9 @@ try:
     import tomllib
 except ImportError:
     import tomli as tomllib
-from pyproject_external import External, DepURL
-
 import pytest
+
+from pyproject_external import DepURL, External
 
 
 def test_external():
@@ -90,7 +90,7 @@ def test_informative_error_message():
         """
     )
     ext = External.from_pyproject_data(tomllib.loads(toml))
-    with pytest.raises(ValueError, match="Is this dependency in the right category?") as exc:
+    with pytest.raises(ValueError, match="Is this dependency in the right category?"):
         ext.map_dependencies("fedora", package_manager="dnf")
 
 
