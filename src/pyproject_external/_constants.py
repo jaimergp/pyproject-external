@@ -26,6 +26,5 @@ DEFAULT_REGISTRY_SCHEMA_URL: Final[str] = (
     "schemas/central-registry.schema.json"
 )
 DEFAULT_REGISTRY_URL: Final[str] = (
-    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/main/"
-    "data/registry.json"
+    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/main/data/registry.json"
 )

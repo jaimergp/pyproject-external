@@ -153,9 +153,7 @@ pm_no_equals_defaults = {
     ],
 )
 def test_add_version_to_spec(mapping_instance, name, version, pm_config, expected):
-    """
-    Tests the _add_version_to_spec method with various inputs.
-    """
+    """Tests the _add_version_to_spec method with various inputs."""
     result = mapping_instance._add_version_to_spec(name, version, pm_config)
     assert result == expected
 

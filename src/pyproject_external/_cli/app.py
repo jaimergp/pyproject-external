@@ -6,9 +6,12 @@ CLI to work with PEP 725 external metadata.
 
 import typer
 
-from .show import main as _show, help as _show_help
-from .build import main as _build, help as _build_help
-from .install import main as _install, help as _install_help
+from .build import help as _build_help
+from .build import main as _build
+from .install import help as _install_help
+from .install import main as _install
+from .show import help as _show_help
+from .show import main as _show
 
 app = typer.Typer(
     help=__doc__,

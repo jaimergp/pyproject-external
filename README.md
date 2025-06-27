@@ -8,7 +8,7 @@ The high-level API is provided by the `External` class. All the other
 objects are considered low-level API to interact with the data
 provided by [`external-metadata-mappings`](https://github.com/jaimergp/external-metadata-mappings).
 
-The CLI interface available as `python -m pyproject_external` allows you to 
+The CLI interface available as `python -m pyproject_external` allows you to
 take a sdist or a local directory to parse and present the `[external]`
 metadata in different ways: as is, normalized, mapped to the desired ecosystem
 and package manager, or as a command you can run in your machine.

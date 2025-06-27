@@ -27,8 +27,8 @@ from rich.markup import escape
 from .. import (
     Config,
     External,
-    find_ecosystem_for_package_manager,
     detect_ecosystem_and_package_manager,
+    find_ecosystem_for_package_manager,
 )
 
 help = __doc__

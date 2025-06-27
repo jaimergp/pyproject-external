@@ -19,15 +19,16 @@ from packaging.specifiers import Specifier
 
 from ._constants import (
     DEFAULT_ECOSYSTEMS_SCHEMA_URL,
-    DEFAULT_MAPPING_SCHEMA_URL,
-    DEFAULT_REGISTRY_SCHEMA_URL,
     DEFAULT_ECOSYSTEMS_URL,
-    DEFAULT_REGISTRY_URL,
+    DEFAULT_MAPPING_SCHEMA_URL,
     DEFAULT_MAPPING_URL_TEMPLATE,
+    DEFAULT_REGISTRY_SCHEMA_URL,
+    DEFAULT_REGISTRY_URL,
 )
 
 if TYPE_CHECKING:
-    from typing import Any, Iterable, Literal
+    from collections.abc import Iterable
+    from typing import Any, Literal
 
     try:
         from typing import Self
@@ -160,11 +161,11 @@ class Ecosystems(UserDict, _Validated, _FromPathOrUrlOrDefault):
         for item in self.data.get("ecosystems", {}).items():
             yield item
 
-    def iter_mappings(self) -> Iterable["Mapping"]:
+    def iter_mappings(self) -> Iterable[Mapping]:
         for name, ecosystem in self.iter_items():
             yield Mapping.from_url(ecosystem["mapping"])
 
-    def get_mapping(self, name: str, default: Any = ...) -> "Mapping":
+    def get_mapping(self, name: str, default: Any = ...) -> Mapping:
         for item_name, ecosystem in self.iter_items():
             if name == item_name:
                 return Mapping.from_url(ecosystem["mapping"])
@@ -247,7 +248,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     def _resolve_specs(self, mapping_entry) -> list[str]:
         if specs := mapping_entry.get("specs"):
             return specs
-        elif specs_from := mapping_entry.get("specs_from"):
+        if specs_from := mapping_entry.get("specs_from"):
             return self._resolve_specs(next(self.iter_by_id(specs_from)))
         return []
 

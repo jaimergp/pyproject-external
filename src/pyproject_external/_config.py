@@ -11,14 +11,14 @@ except ImportError:
 
 from platformdirs import user_config_dir
 
-from ._constants import APP_NAME, APP_AUTHOR, APP_CONFIG_FILENAME
+from ._constants import APP_AUTHOR, APP_CONFIG_FILENAME, APP_NAME
 
 
 def _get_config_directory():
     if pyproject_external_config := os.environ.get("PYPROJECT_EXTERNAL_CONFIG"):
         return Path(pyproject_external_config)
-    else:
-        return Path(user_config_dir(appname=APP_NAME, appauthor=APP_AUTHOR))
+    return Path(user_config_dir(appname=APP_NAME, appauthor=APP_AUTHOR))
+
 
 def _get_config_file():
     return _get_config_directory() / APP_CONFIG_FILENAME
