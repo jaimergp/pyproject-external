@@ -7,5 +7,5 @@ Build wheels while handling external metadata installation.
 help = __doc__
 
 
-def main():
+def main() -> None:
     print("Not implemented yet.")

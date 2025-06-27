@@ -72,7 +72,7 @@ class External:
             raise ValueError("Pyproject data does not have an 'external' table.")
 
     @property
-    def registry(self):
+    def registry(self) -> Registry:
         if self._registry is None:
             self._registry = Registry.from_default()
         return self._registry
@@ -125,8 +125,7 @@ class External:
                 "dependencies",
             )
         for category in categories:
-            for dependency in getattr(self, category):
-                yield dependency
+            yield from getattr(self, category)
 
     def iter_optional(
         self,
