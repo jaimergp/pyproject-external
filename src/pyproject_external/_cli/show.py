@@ -1,5 +1,9 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2023 Quansight Labs
+"""
+Query PEP 725 [external] metadata from pyproject.toml or source distributions.
+"""
+
 import logging
 import shlex
 import tarfile
@@ -20,14 +24,14 @@ from rich.logging import RichHandler
 from rich.markup import escape
 
 # Only import from __init__ to make sure the only uses the public interface
-from . import (
+from .. import (
     Config,
     External,
     find_ecosystem_for_package_manager,
     detect_ecosystem_and_package_manager,
 )
 
-
+help = __doc__
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
@@ -121,13 +125,3 @@ def main(
         print(shlex.join(external.map_dependencies(ecosystem, package_manager=package_manager)))
     else:
         raise typer.BadParameter(f"Unknown value for --output: {output}")
-
-
-def entry_point() -> None:
-    typer.run(main)
-
-
-if __name__ == "__main__":
-    import sys
-
-    sys.exit(entry_point())
