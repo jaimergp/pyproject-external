@@ -175,12 +175,12 @@ def test_build_command(dep_url, expected):
 
 
 @pytest.mark.skipif(not shutil.which("conda"), reason="conda not available")
-def test_run_command(tmp_path):
+def test_run_command_show(tmp_path):
     (tmp_path / "pyproject.toml").write_text(
         '[external]\nhost_requires = ["dep:generic/llvm@<20"]'
     )
     subprocess.run(
-        f'set -x; eval "$({sys.executable} -m pyproject_external --output=command '
+        f'set -x; eval "$({sys.executable} -m pyproject_external show --output=command '
         f'{tmp_path} --package-manager=conda)"',
         shell=True,
         check=True,

@@ -90,7 +90,7 @@ def test_informative_error_message():
         """
     )
     ext = External.from_pyproject_data(tomllib.loads(toml))
-    with pytest.raises(ValueError, match="Is this dependency in the right category?") as exc:
+    with pytest.raises(ValueError, match="Is this dependency in the right category?"):
         ext.map_dependencies("fedora", package_manager="dnf")
 
 

@@ -4,6 +4,6 @@
 if __name__ == "__main__":
     import sys
 
-    from ._cli import entry_point
+    from ._cli import app
 
-    sys.exit(entry_point())
+    sys.exit(app())
