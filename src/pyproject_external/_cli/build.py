@@ -3,9 +3,11 @@
 """
 Build wheels while handling external metadata installation.
 """
+
 import typer
 
 app = typer.Typer()
+
 
 @app.command(help=__doc__)
 def build() -> None:
