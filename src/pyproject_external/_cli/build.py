@@ -3,9 +3,10 @@
 """
 Build wheels while handling external metadata installation.
 """
+import typer
 
-help = __doc__
+app = typer.Typer()
 
-
-def main() -> None:
+@app.command(help=__doc__)
+def build() -> None:
     print("Not implemented yet.")

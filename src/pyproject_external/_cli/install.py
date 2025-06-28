@@ -31,12 +31,12 @@ from .. import (
 )
 from ._utils import _pyproject_text
 
-help = __doc__
-
 log = logging.getLogger(__name__)
+app = typer.Typer()
 
 
-def main(
+@app.command(help=__doc__)
+def install(
     package: Annotated[
         str,
         typer.Argument(

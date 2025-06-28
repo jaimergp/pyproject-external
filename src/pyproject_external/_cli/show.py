@@ -18,8 +18,6 @@ except ImportError:
 import tomli_w
 import typer
 from rich import print as rprint
-from rich.console import Console
-from rich.logging import RichHandler
 from rich.markup import escape
 
 # Only import from __init__ to make sure the only uses the public interface
@@ -31,14 +29,8 @@ from .. import (
 )
 from ._utils import _pyproject_text
 
-help = __doc__
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(console=Console(stderr=True))],
-)
 log = logging.getLogger(__name__)
+app = typer.Typer()
 
 
 class _OutputChoices(Enum):
@@ -49,7 +41,8 @@ class _OutputChoices(Enum):
     COMMAND = "command"
 
 
-def main(
+@app.command(help=__doc__)
+def show(
     package: Annotated[
         str,
         typer.Argument(
