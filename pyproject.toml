@@ -33,6 +33,7 @@ dependencies = [
   "tomli; python_version <= '3.10'",
   "tomli-w",
   "typer",
+  "click<8.2", # TEMP: Bug when no command is passed, see https://github.com/fastapi/typer/pull/1240
   "typing_extensions; python_version <= '3.10'",
   "packaging",
   "packageurl-python>=0.17.1",
