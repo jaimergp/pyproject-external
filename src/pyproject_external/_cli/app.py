@@ -10,8 +10,8 @@ import typer
 from rich.console import Console
 from rich.logging import RichHandler
 
-from .build import app as _build
-from .install import app as _install
+from .build import app as _install
+from .install import app as _build
 from .show import app as _show
 
 app = typer.Typer(
