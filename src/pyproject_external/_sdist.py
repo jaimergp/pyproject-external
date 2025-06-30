@@ -3,7 +3,6 @@
 """
 Utilities to patch sdist tarballs to include `[external]` metadata.
 """
-import argparse
 from pathlib import Path
 import re
 import tarfile
@@ -86,21 +85,3 @@ def create_new_sdist(sdist_name, sdist_dir, amended_dir):
     dirname = sdist_name.split('.tar.gz')[0]
     with tarfile.open(amended_dir / sdist_name.lower().replace("_", "-"), "w:gz") as tar:
         tar.add(sdist_dir / dirname, arcname=dirname)
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('package_name')
-    args = parser.parse_args()
-
-    package_name = args.package_name
-
-    amended_dir = Path('./sdist/_amended')
-    amended_dir.mkdir(exist_ok=True, parents=True)
-    sdist_dir = amended_dir.parent
-
-    fname_sdist = download_sdist(package_name, sdist_dir)
-    fname_pyproject_toml = untar_sdist(fname_sdist, sdist_dir)
-    append_external_metadata(fname_pyproject_toml, package_name)
-    apply_patches(package_name, fname_pyproject_toml.parent)
-    create_new_sdist(fname_sdist, sdist_dir, amended_dir)
