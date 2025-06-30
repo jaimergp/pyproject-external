@@ -62,7 +62,7 @@ def show(
             "'mapped' prints the dependencies mapped to the given ecosystem. "
             "'command' prints the install command for the given package manager."
         ),
-    ] = _OutputChoices.RAW,
+    ] = _OutputChoices.RAW.value,
     package_manager: Annotated[
         str,
         typer.Option(help="If given, use this package manager rather than the auto-detected one."),
