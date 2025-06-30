@@ -78,7 +78,9 @@ def apply_patches(
         run([sys.executable, script, unpacked_dir], check=True)
 
 
-def create_new_sdist(sdist_name: str, sdist_dir: str | Path, amended_dir: str | Path = ".") -> None:
+def create_new_sdist(
+    sdist_name: str, sdist_dir: str | Path, amended_dir: str | Path = "."
+) -> None:
     dirname = sdist_name.split(".tar.gz")[0]
     with tarfile.open(Path(amended_dir, sdist_name.lower().replace("_", "-")), "w:gz") as tar:
         tar.add(sdist_dir / dirname, arcname=dirname)

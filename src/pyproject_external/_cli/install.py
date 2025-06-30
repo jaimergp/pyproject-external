@@ -31,7 +31,6 @@ from .. import (
 from ._utils import _Installers, _pyproject_text
 
 log = logging.getLogger(__name__)
-
 app = typer.Typer()
 
 

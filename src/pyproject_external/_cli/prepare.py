@@ -24,7 +24,6 @@ from .._sdist import (
 )
 
 log = logging.getLogger(__name__)
-
 app = typer.Typer()
 
 
