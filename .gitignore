@@ -2,3 +2,5 @@
 **/.pixi/
 __pycache__/
 sdist/
+.venv/
+uv.lock
