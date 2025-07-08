@@ -12,6 +12,7 @@ from rich.logging import RichHandler
 
 from .build import app as _install
 from .install import app as _build
+from .prepare import app as _prepare
 from .show import app as _show
 
 app = typer.Typer(
@@ -22,6 +23,7 @@ app = typer.Typer(
 app.add_typer(_show)
 app.add_typer(_build)
 app.add_typer(_install)
+app.add_typer(_prepare)
 
 logging.basicConfig(
     level=logging.INFO,
