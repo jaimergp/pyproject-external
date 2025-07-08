@@ -6,7 +6,6 @@ Query PEP 725 [external] metadata from pyproject.toml or source distributions.
 
 import logging
 import shlex
-import tarfile
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
@@ -19,8 +18,6 @@ except ImportError:
 import tomli_w
 import typer
 from rich import print as rprint
-from rich.console import Console
-from rich.logging import RichHandler
 from rich.markup import escape
 
 # Only import from __init__ to make sure the only uses the public interface
@@ -30,24 +27,10 @@ from .. import (
     detect_ecosystem_and_package_manager,
     find_ecosystem_for_package_manager,
 )
+from ._utils import _pyproject_text
 
-help = __doc__
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(console=Console(stderr=True))],
-)
 log = logging.getLogger(__name__)
-
-
-def _read_pyproject_from_sdist(path: Path) -> str:
-    with tarfile.open(path) as tar:
-        for info in tar.getmembers():
-            name = info.name
-            if "/" in name and name.split("/")[-1] == "pyproject.toml":
-                return tar.extractfile(info).read().decode()
-    raise ValueError("Could not read pyproject.toml file from sdist")
+app = typer.Typer()
 
 
 class _OutputChoices(Enum):
@@ -58,7 +41,8 @@ class _OutputChoices(Enum):
     COMMAND = "command"
 
 
-def main(
+@app.command(help=__doc__)
+def show(
     package: Annotated[
         str,
         typer.Argument(
@@ -85,13 +69,7 @@ def main(
     ] = Config.load_user_config().preferred_package_manager or "",
 ) -> None:
     package = Path(package)
-    if package.is_file():
-        if not package.name.lower().endswith(".tar.gz"):
-            raise typer.BadParameter(f"Given package '{package}' is a file, but not a sdist.")
-        pyproject_text = _read_pyproject_from_sdist(package)
-    elif package.is_dir():
-        pyproject_text = (package / "pyproject.toml").read_text()
-
+    pyproject_text = _pyproject_text(package)
     pyproject = tomllib.loads(pyproject_text)
     raw_external = pyproject.get("external")
     if not raw_external:
