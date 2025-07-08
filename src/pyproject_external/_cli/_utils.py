@@ -27,3 +27,13 @@ def _pyproject_text(package: Path) -> str:
 class _Installers(str, Enum):
     pip = "pip"
     uv = "uv"
+
+
+class NotOnCIError(RuntimeError):
+    def __init__(self):
+        super().__init__(
+            "This tool should only be used in CI or ephemeral environments!\n\n"
+            "It will likely install system packages as a side effect of providing the "
+            "external dependencies required to build the wheels.\n\n"
+            "If you understand the risks, set CI=1 to override."
+        )

@@ -30,7 +30,7 @@ from .. import (
     detect_ecosystem_and_package_manager,
     find_ecosystem_for_package_manager,
 )
-from ._utils import _Installers, _pyproject_text
+from ._utils import NotOnCIError, _Installers, _pyproject_text
 
 log = logging.getLogger(__name__)
 app = typer.Typer()
@@ -69,7 +69,7 @@ def build(
     unknown_args: typer.Context = typer.Option(()),
 ) -> None:
     if not os.environ.get("CI"):
-        raise RuntimeError("This tool can only be used in CI environments. Set CI=1 to override.")
+        raise NotOnCIError()
 
     package = Path(package)
     pyproject_text = _pyproject_text(package)
