@@ -49,8 +49,8 @@ jobs:
     permissions:
       id-token: write
     environment:
-        name: pypi
-        url: https://pypi.org/p/pyproject-external
+      name: pypi
+      url: https://pypi.org/p/pyproject-external
 
     steps:
       - name: Retrieve release distributions

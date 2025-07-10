@@ -13,6 +13,7 @@ from ._system import (  # noqa
     activated_conda_env,
 )
 from ._url import DepURL  # noqa
+
 try:
     from ._version import __version__
 except ImportError:
