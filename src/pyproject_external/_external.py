@@ -28,7 +28,7 @@ if TYPE_CHECKING:
         "optional_build_requires",
         "optional_host_requires",
         "optional_dependencies",
-        "dependency_groups"
+        "dependency_groups",
     ]
 
 from ._registry import Ecosystems, Mapping, Registry
