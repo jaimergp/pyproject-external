@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from difflib import SequenceMatcher
+from hashlib import sha256
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from dependency_groups import resolve as _resolve_dependency_groups
 
 try:
     import tomllib
@@ -28,12 +31,42 @@ if TYPE_CHECKING:
         "optional_build_requires",
         "optional_host_requires",
         "optional_dependencies",
+        "dependency_groups",
     ]
 
 from ._registry import Ecosystems, Mapping, Registry
 from ._url import DepURL
 
 log = logging.getLogger(__name__)
+
+
+def _resolve_dependency_groups_with_hashed_deps(
+    groups: dict[str, list[str | dict[str, Any]]],
+) -> dict[str, list[str]]:
+    """
+    The dependency_groups.resolve() logic expects valid Python requirements,
+    so our `dep:` URLs will not pass that validation. We take their sha256 hash
+    (which happen to be valid Python specifiers) before passing them to the resolver,
+    and then convert the hash back to the original string.
+    """
+    patched_groups = {}
+    hashed_deps = {}
+    for group_name, group in groups.items():
+        patched_group = []
+        for maybe_dep in group:
+            if isinstance(maybe_dep, str):
+                hashed_dep = sha256(maybe_dep.encode()).hexdigest()
+                hashed_deps[hashed_dep] = maybe_dep
+                patched_group.append(hashed_dep)
+            else:
+                patched_group.append(maybe_dep)
+        patched_groups[group_name] = patched_group
+    return {
+        group_name: [
+            hashed_deps[dep] for dep in _resolve_dependency_groups(patched_groups, group_name)
+        ]
+        for group_name in patched_groups
+    }
 
 
 @dataclass
@@ -44,16 +77,27 @@ class External:
     optional_build_requires: dict[str, list[DepURL]] = field(default_factory=dict)
     optional_host_requires: dict[str, list[DepURL]] = field(default_factory=dict)
     optional_dependencies: dict[str, list[DepURL]] = field(default_factory=dict)
+    dependency_groups: dict[str, list[DepURL] | dict[str, Any]] = field(default_factory=dict)
 
     def __post_init__(self):
         self._registry = None
+        self._group_keys = (
+            "optional_build_requires",
+            "optional_host_requires",
+            "optional_dependencies",
+            "dependency_groups",
+        )
         for name, urls_or_group in asdict(self).items():
-            if "optional" in name:
-                new_group = {
+            if name in self._group_keys:
+                if name == "dependency_groups":
+                    flattened = _resolve_dependency_groups_with_hashed_deps(urls_or_group)
+                else:
+                    flattened = urls_or_group
+                coerced = {
                     group_name: [DepURL.from_string(url) for url in urls]
-                    for group_name, urls in urls_or_group.items()
+                    for group_name, urls in flattened.items()
                 }
-                setattr(self, name, new_group)
+                setattr(self, name, coerced)
             else:
                 # coerce to DepURL and validate
                 setattr(self, name, [DepURL.from_string(url) for url in urls_or_group])
@@ -84,7 +128,7 @@ class External:
         for name, value in asdict(self).items():
             if not value:
                 continue
-            if "optional" in name:
+            if name in self._group_keys:
                 new_value = {}
                 for group_name, urls in value.items():
                     if mapped_for is not None:
@@ -133,6 +177,7 @@ class External:
             "optional_build_requires",
             "optional_host_requires",
             "optional_dependencies",
+            "dependency_groups",
         ],
         group_name: str | None = None,
     ) -> Iterable[tuple[str, DepURL]]:
@@ -141,6 +186,7 @@ class External:
                 "optional_build_requires",
                 "optional_host_requires",
                 "optional_dependencies",
+                "dependency_groups",
             )
 
         for category in categories:
@@ -179,29 +225,23 @@ class External:
                 f"Choose one of {package_manager_names}."
             )
 
-        categories = (
-            (key,)
-            if key
-            else (
-                "build_requires",
-                "host_requires",
-                "dependencies",
-                "optional_build_requires",
-                "optional_host_requires",
-                "optional_dependencies",
-            )
-        )
+        categories = (key,) if key else tuple(f.name for f in fields(self))
         all_specs = []
         include_python_dev = False
+        category_to_specs_type = {
+            "build_requires": "build",
+            "host_requires": "host",
+            "dependencies": "run",
+            "optional_build_requires": "build",
+            "optional_host_requires": "host",
+            "optional_dependencies": "run",
+            "dependency_groups": "run",
+        }
         for category in categories:
-            required = "optional" not in category
-            if "build" in category:
-                specs_type = "build"
-            elif "host" in category:
-                specs_type = "host"
-            elif "dependencies" in category:
-                specs_type = "run"
-            else:
+            required = category not in self._group_keys
+            try:
+                specs_type = category_to_specs_type[category]
+            except KeyError:
                 raise ValueError(f"Unrecognized category '{category}'.")
 
             if required:
@@ -280,15 +320,7 @@ class External:
     def install_command(
         self,
         ecosystem: str,
-        key: Literal[
-            "build_requires",
-            "host_requires",
-            "dependencies",
-            "optional_build_requires",
-            "optional_host_requires",
-            "optional_dependencies",
-        ]
-        | None = None,
+        key: ExternalKeys | None = None,
         group_name: str | None = None,
         package_manager: str | None = None,
     ) -> list[str]:

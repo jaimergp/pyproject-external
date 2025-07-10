@@ -65,6 +65,41 @@ def test_external_optional():
     )
 
 
+def test_external_dependency_groups():
+    toml = dedent(
+        """
+        [external.dependency-groups]
+        test = [
+            "dep:generic/arrow",
+            {include-group = "test-compiled"},
+        ]
+        test-compiled = [
+            "dep:generic/make",
+            "dep:generic/ninja",
+        ]
+        """
+    )
+    ext = External.from_pyproject_data(tomllib.loads(toml))
+    assert len(ext.dependency_groups) == 2
+    assert len(ext.dependency_groups["test"]) == 3
+    assert ext.dependency_groups["test"] == [
+        DepURL.from_string("dep:generic/arrow"),
+        DepURL.from_string("dep:generic/make"),
+        DepURL.from_string("dep:generic/ninja"),
+    ]
+    assert ext.map_dependencies(
+        "conda-forge",
+        key="dependency_groups",
+        package_manager="conda",
+    ) == ["libarrow-all", "make", "ninja"]
+    assert set(["conda", "install", "make", "ninja", "libarrow-all"]).issubset(
+        ext.install_command(
+            "conda-forge",
+            package_manager="conda",
+        )
+    )
+
+
 def test_crude_error_message():
     toml = dedent(
         """
