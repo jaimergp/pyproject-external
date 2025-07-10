@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -28,6 +28,7 @@ if TYPE_CHECKING:
         "optional_build_requires",
         "optional_host_requires",
         "optional_dependencies",
+        "dependency_groups"
     ]
 
 from ._registry import Ecosystems, Mapping, Registry
@@ -44,11 +45,18 @@ class External:
     optional_build_requires: dict[str, list[DepURL]] = field(default_factory=dict)
     optional_host_requires: dict[str, list[DepURL]] = field(default_factory=dict)
     optional_dependencies: dict[str, list[DepURL]] = field(default_factory=dict)
+    dependency_groups: dict[str, list[DepURL]] = field(default_factory=dict)
 
     def __post_init__(self):
         self._registry = None
+        self._group_keys = (
+            "optional_build_requires",
+            "optional_host_requires",
+            "optional_dependencies",
+            "dependency_groups",
+        )
         for name, urls_or_group in asdict(self).items():
-            if "optional" in name:
+            if name in self._group_keys:
                 new_group = {
                     group_name: [DepURL.from_string(url) for url in urls]
                     for group_name, urls in urls_or_group.items()
@@ -84,7 +92,7 @@ class External:
         for name, value in asdict(self).items():
             if not value:
                 continue
-            if "optional" in name:
+            if name in self._group_keys:
                 new_value = {}
                 for group_name, urls in value.items():
                     if mapped_for is not None:
@@ -133,6 +141,7 @@ class External:
             "optional_build_requires",
             "optional_host_requires",
             "optional_dependencies",
+            "dependency_groups",
         ],
         group_name: str | None = None,
     ) -> Iterable[tuple[str, DepURL]]:
@@ -141,6 +150,7 @@ class External:
                 "optional_build_requires",
                 "optional_host_requires",
                 "optional_dependencies",
+                "dependency_groups",
             )
 
         for category in categories:
@@ -179,29 +189,23 @@ class External:
                 f"Choose one of {package_manager_names}."
             )
 
-        categories = (
-            (key,)
-            if key
-            else (
-                "build_requires",
-                "host_requires",
-                "dependencies",
-                "optional_build_requires",
-                "optional_host_requires",
-                "optional_dependencies",
-            )
-        )
+        categories = (key,) if key else tuple(f.name for f in fields(self))
         all_specs = []
         include_python_dev = False
+        category_to_specs_type = {
+            "build_requires": "build",
+            "host_requires": "host",
+            "dependencies": "run",
+            "optional_build_requires": "build",
+            "optional_host_requires": "host",
+            "optional_dependencies": "run",
+            "dependency_groups": "run",
+        }
         for category in categories:
-            required = "optional" not in category
-            if "build" in category:
-                specs_type = "build"
-            elif "host" in category:
-                specs_type = "host"
-            elif "dependencies" in category:
-                specs_type = "run"
-            else:
+            required = category not in self._group_keys
+            try:
+                specs_type = category_to_specs_type[category]
+            except KeyError:
                 raise ValueError(f"Unrecognized category '{category}'.")
 
             if required:
@@ -280,15 +284,7 @@ class External:
     def install_command(
         self,
         ecosystem: str,
-        key: Literal[
-            "build_requires",
-            "host_requires",
-            "dependencies",
-            "optional_build_requires",
-            "optional_host_requires",
-            "optional_dependencies",
-        ]
-        | None = None,
+        key: ExternalKeys | None = None,
         group_name: str | None = None,
         package_manager: str | None = None,
     ) -> list[str]:
