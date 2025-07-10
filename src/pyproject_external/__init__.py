@@ -13,8 +13,13 @@ from ._system import (  # noqa
     activated_conda_env,
 )
 from ._url import DepURL  # noqa
+try:
+    from ._version import __version__
+except ImportError:
+    __version__ = "0.0.0.dev0+placeholder"
 
 __all__ = [
+    "__version__",
     "Config",
     "DepURL",
     "Ecosystems",
