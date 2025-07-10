@@ -208,3 +208,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# hatchling-vcs
+src/pyproject_external/_version.py
