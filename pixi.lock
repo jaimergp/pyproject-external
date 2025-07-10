@@ -2491,24 +2491,24 @@ packages:
   requires_python: '>=3.6'
 - pypi: .
   name: pyproject-external
-  version: 0.0.1
-  sha256: 6e6e6ccb30838b866c012401c959feef76b67245e7f4b0be846a2a1a4c319295
+  version: 0.1.dev69
+  sha256: 087a0d85c048120e9e55bf07bd8862527a2c92d82eccf46f46ae4e1ce8fbf167
   requires_dist:
-  - pip
   - build
-  - requests
-  - jsonschema
-  - distro
-  - rich
-  - tomli ; python_full_version < '3.11'
-  - tomli-w
-  - typer
   - click<8.2
-  - typing-extensions ; python_full_version < '3.11'
-  - packaging
+  - distro
+  - jsonschema
   - packageurl-python>=0.17.1
+  - packaging
+  - pip
   - platformdirs>=3.10.0
   - pypi-json
+  - requests
+  - rich
+  - tomli-w
+  - tomli ; python_full_version < '3.11'
+  - typer
+  - typing-extensions ; python_full_version < '3.11'
   requires_python: '>=3.10'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/bd/24/12818598c362d7f300f18e74db45963dbcb85150324092410c8b49405e42/pyproject_hooks-1.2.0-py3-none-any.whl
