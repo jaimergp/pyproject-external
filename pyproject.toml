@@ -40,6 +40,7 @@ dependencies = [
   "packageurl-python>=0.17.1",
   "platformdirs >=3.10.0",
   "pypi-json",
+  "dependency-groups",
 ]
 
 [project.urls]

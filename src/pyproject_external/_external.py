@@ -4,8 +4,11 @@ import logging
 import os
 from dataclasses import asdict, dataclass, field, fields
 from difflib import SequenceMatcher
+from hashlib import sha256
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from dependency_groups import resolve as _resolve_dependency_groups
 
 try:
     import tomllib
@@ -37,6 +40,35 @@ from ._url import DepURL
 log = logging.getLogger(__name__)
 
 
+def _resolve_dependency_groups_with_hashed_deps(
+    groups: dict[str, list[str | dict[str, Any]]],
+) -> dict[str, list[str]]:
+    """
+    The dependency_groups.resolve() logic expects valid Python requirements,
+    so our `dep:` URLs will not pass that validation. We take their sha256 hash
+    (which happen to be valid Python specifiers) before passing them to the resolver,
+    and then convert the hash back to the original string.
+    """
+    patched_groups = {}
+    hashed_deps = {}
+    for group_name, group in groups.items():
+        patched_group = []
+        for maybe_dep in group:
+            if isinstance(maybe_dep, str):
+                hashed_dep = sha256(maybe_dep.encode()).hexdigest()
+                hashed_deps[hashed_dep] = maybe_dep
+                patched_group.append(hashed_dep)
+            else:
+                patched_group.append(maybe_dep)
+        patched_groups[group_name] = patched_group
+    return {
+        group_name: [
+            hashed_deps[dep] for dep in _resolve_dependency_groups(patched_groups, group_name)
+        ]
+        for group_name in patched_groups
+    }
+
+
 @dataclass
 class External:
     build_requires: list[DepURL] = field(default_factory=list)
@@ -45,7 +77,7 @@ class External:
     optional_build_requires: dict[str, list[DepURL]] = field(default_factory=dict)
     optional_host_requires: dict[str, list[DepURL]] = field(default_factory=dict)
     optional_dependencies: dict[str, list[DepURL]] = field(default_factory=dict)
-    dependency_groups: dict[str, list[DepURL]] = field(default_factory=dict)
+    dependency_groups: dict[str, list[DepURL] | dict[str, Any]] = field(default_factory=dict)
 
     def __post_init__(self):
         self._registry = None
@@ -57,11 +89,15 @@ class External:
         )
         for name, urls_or_group in asdict(self).items():
             if name in self._group_keys:
-                new_group = {
+                if name == "dependency_groups":
+                    flattened = _resolve_dependency_groups_with_hashed_deps(urls_or_group)
+                else:
+                    flattened = urls_or_group
+                coerced = {
                     group_name: [DepURL.from_string(url) for url in urls]
-                    for group_name, urls in urls_or_group.items()
+                    for group_name, urls in flattened.items()
                 }
-                setattr(self, name, new_group)
+                setattr(self, name, coerced)
             else:
                 # coerce to DepURL and validate
                 setattr(self, name, [DepURL.from_string(url) for url in urls_or_group])
