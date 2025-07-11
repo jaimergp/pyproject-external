@@ -4,7 +4,6 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pyproject-external"
-version = "0.0.1"
 description = "Utilities to work with PEP 725 `[external]` metadata"
 readme = "README.md"
 authors = [
@@ -42,6 +41,7 @@ dependencies = [
   "pypi-json",
   "dependency-groups",
 ]
+dynamic = ["version"]
 
 [project.urls]
 homepage = "https://github.com/jaimergp/pyproject-external"
@@ -136,3 +136,9 @@ ignore = [
 show_error_codes = true
 ignore_missing_imports = true
 strict = true
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/pyproject_external/_version.py"
+
+[tool.hatch.version]
+source = "vcs"
