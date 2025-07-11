@@ -2564,8 +2564,8 @@ packages:
   requires_python: '>=3.6'
 - pypi: .
   name: pyproject-external
-  version: 0.1.dev70+dirty
-  sha256: 6f13753176b0ed0d059e455b56b162452e6623c7b7542d2b11b1a8d600e8a587
+  version: 0.1.dev73+g7069e03.d20250711
+  sha256: be04808afd8f0470e0b176f41cffbd8df3c0963d1bcf7617f85c7320fa7de5e0
   requires_dist:
   - build
   - click<8.2

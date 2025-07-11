@@ -142,6 +142,3 @@ version-file = "src/pyproject_external/_version.py"
 
 [tool.hatch.version]
 source = "vcs"
-
-[tool.hatch.version.raw-options]
-local_scheme = "dirty-tag"
