@@ -321,6 +321,30 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         cmd.extend(specs)
         return cmd
 
+    def iter_query_commands(
+        self,
+        dep_url: str,
+        package_manager: str,
+        specs_type: TBuildHostRun | Iterable[TBuildHostRun] | None = None,
+    ) -> Iterable[list[str]]:
+        mgr = self.get_package_manager(package_manager)
+        for specs in self.iter_specs_by_id(dep_url, package_manager, specs_type):
+            yield self.build_query_command(mgr, specs)
+
+    def build_query_command(
+        self,
+        package_manager: dict[str, Any],
+        specs: list[str],
+    ) -> list[str]:
+        # TODO: Deal with `{}` placeholders
+        cmd = []
+        if package_manager.get("requires_elevation", False):
+            # TODO: Add a system to infer type of elevation required (sudo vs Windows AUC)
+            cmd.append("sudo")
+        cmd.extend(package_manager["query_command"])
+        cmd.extend(specs)
+        return cmd
+
     def _add_version_to_spec(self, name: str, version: str, package_manager: dict) -> str:
         operator_mapping_config = package_manager.get("version_operators")
         if operator_mapping_config == {} or not version:

@@ -198,13 +198,13 @@ class External:
                     for dependency in dependencies:
                         yield name, dependency
 
-    def _map_install_deps_impl(
+    def _map_deps_or_command_impl(
         self,
         ecosystem: str,
         key: ExternalKeys | None = None,
         group_name: str | None = None,
         package_manager: str | None = None,
-        as_install_command: bool = False,
+        return_type: Literal["specs", "install_command", "query_command"] = "specs",
     ) -> list[str]:
         ecosystem_names = list(Ecosystems.from_default().iter_names())
         if ecosystem not in ecosystem_names:
@@ -296,8 +296,12 @@ class External:
             )
         all_specs = list(dict.fromkeys(all_specs))
 
-        if as_install_command:
+        if return_type == "install_command":
             return mapping.build_install_command(
+                mapping.get_package_manager(package_manager), all_specs
+            )
+        if return_type == "query_command":
+            return mapping.build_query_command(
                 mapping.get_package_manager(package_manager), all_specs
             )
         return all_specs
@@ -309,12 +313,11 @@ class External:
         group_name: str | None = None,
         package_manager: str | None = None,
     ) -> list[str]:
-        return self._map_install_deps_impl(
+        return self._map_deps_or_command_impl(
             ecosystem=ecosystem,
             key=key,
             group_name=group_name,
             package_manager=package_manager,
-            as_install_command=False,
         )
 
     def install_command(
@@ -324,12 +327,27 @@ class External:
         group_name: str | None = None,
         package_manager: str | None = None,
     ) -> list[str]:
-        return self._map_install_deps_impl(
+        return self._map_deps_or_command_impl(
             ecosystem=ecosystem,
             key=key,
             group_name=group_name,
             package_manager=package_manager,
-            as_install_command=True,
+            return_type="install_command",
+        )
+
+    def query_command(
+        self,
+        ecosystem: str,
+        key: ExternalKeys | None = None,
+        group_name: str | None = None,
+        package_manager: str | None = None,
+    ) -> list[str]:
+        return self._map_deps_or_command_impl(
+            ecosystem=ecosystem,
+            key=key,
+            group_name=group_name,
+            package_manager=package_manager,
+            return_type="query_command",
         )
 
     def validate(self, canonical: bool = True) -> None:
