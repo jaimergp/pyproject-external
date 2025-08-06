@@ -301,7 +301,9 @@ class External:
                 mapping.get_package_manager(package_manager), all_specs
             )
         if return_type == "query_command":
-            return mapping.build_query_commands(mapping.get_package_manager(package_manager), specs)
+            return mapping.build_query_commands(
+                mapping.get_package_manager(package_manager), specs
+            )
         return all_specs
 
     def map_dependencies(
