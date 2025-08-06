@@ -44,5 +44,7 @@ jobs:
       - uses: prefix-dev/setup-pixi@8ca4608ef7f4daeb54f5205b20d0b7cb42f11143 # v0.8.14
         with:
           environments: ${{ env.PIXI_ENV_NAME }}
+      - name: Ensure package is installed
+        run: pixi reinstall --environment ${{ env.PIXI_ENV_NAME }} pyproject-external
       - name: Run tests
         run: pixi run --environment ${{ env.PIXI_ENV_NAME }} test
