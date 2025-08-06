@@ -329,7 +329,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     ) -> Iterable[list[str]]:
         mgr = self.get_package_manager(package_manager)
         for specs in self.iter_specs_by_id(dep_url, package_manager, specs_type):
-            yield from self.build_query_command(mgr, specs)
+            yield from self.build_query_commands(mgr, specs)
 
     def build_query_commands(
         self,
