@@ -67,8 +67,19 @@ def test_ecosystem_get_mapping():
         default_ecosystems().get_mapping("does-not-exist")
 
 
-@pytest.mark.parametrize("command", ("install_command", "query_command"))
-def test_commands(command):
+def test_commands():
     mapping = Mapping.from_default("conda-forge")
-    assert list(mapping.iter_install_commands("dep:generic/make", "conda"))
-    assert list(mapping.iter_query_commands("dep:generic/make", "conda"))
+    assert [
+        "conda",
+        "install",
+        "--yes",
+        "--channel=conda-forge",
+        "--strict-channel-priority",
+        "make",
+    ] in mapping.iter_install_commands("dep:generic/make", "conda")
+    assert [
+        "conda",
+        "list",
+        "-f",
+        "make",
+    ] in mapping.iter_query_commands("dep:generic/make", "conda")
