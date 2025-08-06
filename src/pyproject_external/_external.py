@@ -205,7 +205,7 @@ class External:
         group_name: str | None = None,
         package_manager: str | None = None,
         return_type: Literal["specs", "install_command", "query_command"] = "specs",
-    ) -> list[str]:
+    ) -> list[str] | list[list[str]]:
         ecosystem_names = list(Ecosystems.from_default().iter_names())
         if ecosystem not in ecosystem_names:
             raise ValueError(
@@ -301,9 +301,10 @@ class External:
                 mapping.get_package_manager(package_manager), all_specs
             )
         if return_type == "query_command":
-            return mapping.build_query_command(
-                mapping.get_package_manager(package_manager), all_specs
-            )
+            return [
+                mapping.build_query_command(mapping.get_package_manager(package_manager), spec)
+                for spec in all_specs
+            ]
         return all_specs
 
     def map_dependencies(
@@ -335,13 +336,13 @@ class External:
             return_type="install_command",
         )
 
-    def query_command(
+    def query_commands(
         self,
         ecosystem: str,
         key: ExternalKeys | None = None,
         group_name: str | None = None,
         package_manager: str | None = None,
-    ) -> list[str]:
+    ) -> list[list[str]]:
         return self._map_deps_or_command_impl(
             ecosystem=ecosystem,
             key=key,
