@@ -329,20 +329,26 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     ) -> Iterable[list[str]]:
         mgr = self.get_package_manager(package_manager)
         for specs in self.iter_specs_by_id(dep_url, package_manager, specs_type):
-            yield self.build_query_command(mgr, specs)
+            for spec in specs:
+                yield self.build_query_command(mgr, spec)
 
     def build_query_command(
         self,
         package_manager: dict[str, Any],
-        specs: list[str],
+        spec: str,
     ) -> list[str]:
-        # TODO: Deal with `{}` placeholders
         cmd = []
         if package_manager.get("requires_elevation", False):
             # TODO: Add a system to infer type of elevation required (sudo vs Windows AUC)
             cmd.append("sudo")
-        cmd.extend(package_manager["query_command"])
-        cmd.extend(specs)
+        with_placeholder = False
+        for arg in package_manager["query_command"]:
+            if "{}" in arg:
+                arg = arg.replace("{}", spec)
+                with_placeholder = True
+            cmd.append(arg)
+        if not with_placeholder:
+            cmd.append(spec)
         return cmd
 
     def _add_version_to_spec(self, name: str, version: str, package_manager: dict) -> str:

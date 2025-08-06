@@ -83,3 +83,11 @@ def test_commands():
         "-f",
         "make",
     ] in mapping.iter_query_commands("dep:generic/make", "conda")
+
+
+def test_query_placeholder():
+    mapping = Mapping.from_default("conda-forge")
+    command = mapping.build_query_command(mapping.get_package_manager("conda"), "numpy")
+    assert command == ["conda", "list", "-f", "numpy"]
+    command = mapping.build_query_command(mapping.get_package_manager("pixi"), "numpy")
+    assert command == ["pixi", "list", "^numpy$"]
