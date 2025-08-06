@@ -87,7 +87,7 @@ def test_commands():
 
 def test_query_placeholder():
     mapping = Mapping.from_default("conda-forge")
-    command = mapping.build_query_command(mapping.get_package_manager("conda"), "numpy")
+    command = mapping.build_query_commands(mapping.get_package_manager("conda"), ["numpy"])[0]
     assert command == ["conda", "list", "-f", "numpy"]
-    command = mapping.build_query_command(mapping.get_package_manager("pixi"), "numpy")
+    command = mapping.build_query_commands(mapping.get_package_manager("pixi"), ["numpy"])[0]
     assert command == ["pixi", "list", "^numpy$"]

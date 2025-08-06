@@ -329,27 +329,29 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     ) -> Iterable[list[str]]:
         mgr = self.get_package_manager(package_manager)
         for specs in self.iter_specs_by_id(dep_url, package_manager, specs_type):
-            for spec in specs:
-                yield self.build_query_command(mgr, spec)
+            yield from self.build_query_commands(mgr, specs)
 
-    def build_query_command(
+    def build_query_commands(
         self,
         package_manager: dict[str, Any],
-        spec: str,
-    ) -> list[str]:
-        cmd = []
-        if package_manager.get("requires_elevation", False):
-            # TODO: Add a system to infer type of elevation required (sudo vs Windows AUC)
-            cmd.append("sudo")
-        with_placeholder = False
-        for arg in package_manager["query_command"]:
-            if "{}" in arg:
-                arg = arg.replace("{}", spec)
-                with_placeholder = True
-            cmd.append(arg)
-        if not with_placeholder:
-            cmd.append(spec)
-        return cmd
+        specs: list[str],
+    ) -> list[list[str]]:
+        cmds = []
+        for spec in specs:
+            cmd = []
+            if package_manager.get("requires_elevation", False):
+                # TODO: Add a system to infer type of elevation required (sudo vs Windows AUC)
+                cmd.append("sudo")
+            with_placeholder = False
+            for arg in package_manager["query_command"]:
+                if "{}" in arg:
+                    arg = arg.replace("{}", spec)
+                    with_placeholder = True
+                cmd.append(arg)
+            if not with_placeholder:
+                cmd.append(spec)
+            cmds.append(cmd)
+        return cmds
 
     def _add_version_to_spec(self, name: str, version: str, package_manager: dict) -> str:
         operator_mapping_config = package_manager.get("version_operators")
