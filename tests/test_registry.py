@@ -65,3 +65,29 @@ def test_ecosystem_get_mapping():
     assert default_ecosystems().get_mapping("does-not-exist", None) is None
     with pytest.raises(ValueError):
         default_ecosystems().get_mapping("does-not-exist")
+
+
+def test_commands():
+    mapping = Mapping.from_default("conda-forge")
+    assert [
+        "conda",
+        "install",
+        "--yes",
+        "--channel=conda-forge",
+        "--strict-channel-priority",
+        "make",
+    ] in mapping.iter_install_commands("dep:generic/make", "conda")
+    assert [
+        "conda",
+        "list",
+        "-f",
+        "make",
+    ] in mapping.iter_query_commands("dep:generic/make", "conda")
+
+
+def test_query_placeholder():
+    mapping = Mapping.from_default("conda-forge")
+    command = mapping.build_query_command(mapping.get_package_manager("conda"), "numpy")
+    assert command == ["conda", "list", "-f", "numpy"]
+    command = mapping.build_query_command(mapping.get_package_manager("pixi"), "numpy")
+    assert command == ["pixi", "list", "^numpy$"]
