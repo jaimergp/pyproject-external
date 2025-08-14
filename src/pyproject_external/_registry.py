@@ -350,8 +350,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
                 # TODO: Add a system to infer type of elevation required (sudo vs Windows AUC)
                 cmd.append("sudo")
             for arg in query_command["command"]:
-                arg = arg.replace("{}", spec)
-                cmd.append(arg)
+                cmd.append(arg.replace("{}", spec))
             cmds.append(cmd)
         return cmds
 
