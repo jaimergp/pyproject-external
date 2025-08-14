@@ -312,13 +312,17 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         package_manager: dict[str, Any],
         specs: list[str],
     ) -> list[str]:
-        # TODO: Deal with `{}` placeholders
         cmd = []
-        if package_manager.get("requires_elevation", False):
+        install_command = package_manager["commands"]["install"]
+        if install_command.get("requires_elevation", False):
             # TODO: Add a system to infer type of elevation required (sudo vs Windows AUC)
             cmd.append("sudo")
-        cmd.extend(package_manager["install_command"])
-        cmd.extend(specs)
+        for arg in install_command["command"]:
+            if "{}" in arg:
+                for spec in specs:
+                    cmd.append(arg.replace("{}", spec))
+            else:
+                cmd.append(arg)
         return cmd
 
     def iter_query_commands(
@@ -336,20 +340,17 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         package_manager: dict[str, Any],
         specs: list[str],
     ) -> list[list[str]]:
+        query_command = package_manager["commands"].get("query")
+        if not query_command:
+            return [[]]
         cmds = []
         for spec in specs:
             cmd = []
-            if package_manager.get("requires_elevation", False):
+            if query_command.get("requires_elevation", False):
                 # TODO: Add a system to infer type of elevation required (sudo vs Windows AUC)
                 cmd.append("sudo")
-            with_placeholder = False
-            for arg in package_manager["query_command"]:
-                if "{}" in arg:
-                    arg = arg.replace("{}", spec)
-                    with_placeholder = True
-                cmd.append(arg)
-            if not with_placeholder:
-                cmd.append(spec)
+            for arg in query_command["command"]:
+                cmd.append(arg.replace("{}", spec))
             cmds.append(cmd)
         return cmds
 
