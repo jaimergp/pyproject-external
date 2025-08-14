@@ -320,8 +320,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         for arg in install_command["command"]:
             if "{}" in arg:
                 for spec in specs:
-                    arg = arg.replace("{}", spec)
-                    cmd.append(arg)
+                    cmd.append(arg.replace("{}", spec))
             else:
                 cmd.append(arg)
         return cmd
