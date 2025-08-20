@@ -204,7 +204,7 @@ class External:
         key: ExternalKeys | None = None,
         group_name: str | None = None,
         package_manager: str | None = None,
-        return_type: Literal["specs", "install_command", "query_command"] = "specs",
+        return_type: Literal["specs", "install_command", "query_commands"] = "specs",
     ) -> list[str] | list[list[str]]:
         ecosystem_names = list(Ecosystems.from_default().iter_names())
         if ecosystem not in ecosystem_names:
@@ -300,7 +300,7 @@ class External:
             return mapping.build_install_command(
                 mapping.get_package_manager(package_manager), all_specs
             )
-        if return_type == "query_command":
+        if return_type == "query_commands":
             return mapping.build_query_commands(
                 mapping.get_package_manager(package_manager), specs
             )
@@ -347,7 +347,7 @@ class External:
             key=key,
             group_name=group_name,
             package_manager=package_manager,
-            return_type="query_command",
+            return_type="query_commands",
         )
 
     def validate(self, canonical: bool = True) -> None:
