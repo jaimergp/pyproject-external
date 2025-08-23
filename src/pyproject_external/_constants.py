@@ -6,25 +6,25 @@ APP_NAME: Final[str] = "pyproject-external"
 APP_AUTHOR: Final[str] = "pyproject-external"
 APP_CONFIG_FILENAME: Final[str] = "config.toml"
 DEFAULT_ECOSYSTEMS_SCHEMA_URL: Final[str] = (
-    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/main/"
+    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/specifier-syntax/"
     "schemas/known-ecosystems.schema.json"
 )
 DEFAULT_ECOSYSTEMS_URL: Final[str] = (
-    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/main/"
+    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/specifier-syntax/"
     "data/known-ecosystems.json"
 )
 DEFAULT_MAPPING_SCHEMA_URL: Final[str] = (
-    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/main/"
+    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/specifier-syntax/"
     "schemas/external-mapping.schema.json"
 )
 DEFAULT_MAPPING_URL_TEMPLATE: Final[str] = (
-    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/main/"
+    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/specifier-syntax/"
     "data/{}.mapping.json"
 )
 DEFAULT_REGISTRY_SCHEMA_URL: Final[str] = (
-    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/main/"
+    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/specifier-syntax/"
     "schemas/central-registry.schema.json"
 )
 DEFAULT_REGISTRY_URL: Final[str] = (
-    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/main/data/registry.json"
+    "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/specifier-syntax/data/registry.json"
 )

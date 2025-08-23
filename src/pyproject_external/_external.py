@@ -205,7 +205,7 @@ class External:
         group_name: str | None = None,
         package_manager: str | None = None,
         return_type: Literal["specs", "install_command", "query_commands"] = "specs",
-    ) -> list[str] | list[list[str]]:
+    ) -> list[list[str]]:
         ecosystem_names = list(Ecosystems.from_default().iter_names())
         if ecosystem not in ecosystem_names:
             raise ValueError(
@@ -291,20 +291,28 @@ class External:
             # TODO: handling of non-default Python installs isn't done here,
             # this adds the python-dev/devel package corresponding to the
             # default Python version of the distro.
-            all_specs.extend(
+            all_specs.append(
                 next(iter(mapping.iter_by_id("dep:generic/python")))["specs"]["build"]
             )
-        all_specs = list(dict.fromkeys(all_specs))
-
+        seen = set()
+        deduped_all_specs = []
+        for args in all_specs:
+            if (t_args := tuple(args)) not in seen:
+                seen.add(t_args)
+                deduped_all_specs.append(args)
         if return_type == "install_command":
-            return mapping.build_install_command(
-                mapping.get_package_manager(package_manager), all_specs
-            )
+            mgr = mapping.get_package_manager(package_manager)
+            multiple_specifiers = mgr["commands"]["install"].get("multiple_specifiers", "always")
+            if multiple_specifiers == "always":
+                return [
+                    mapping.build_install_command(mgr, [arg for args in deduped_all_specs for arg in args])
+                ]
+            return [mapping.build_install_command(mgr, args) for args in deduped_all_specs]
         if return_type == "query_commands":
             return mapping.build_query_commands(
-                mapping.get_package_manager(package_manager), specs
+                mapping.get_package_manager(package_manager), deduped_all_specs
             )
-        return all_specs
+        return deduped_all_specs
 
     def map_dependencies(
         self,
@@ -320,13 +328,13 @@ class External:
             package_manager=package_manager,
         )
 
-    def install_command(
+    def install_commands(
         self,
         ecosystem: str,
         key: ExternalKeys | None = None,
         group_name: str | None = None,
         package_manager: str | None = None,
-    ) -> list[str]:
+    ) -> list[list[str]]:
         return self._map_deps_or_command_impl(
             ecosystem=ecosystem,
             key=key,

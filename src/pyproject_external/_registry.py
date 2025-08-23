@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from collections import UserDict
 from functools import cache
+from logging import getLogger
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -39,6 +40,9 @@ if TYPE_CHECKING:
 
     _DefaultType = TypeVar("_DefaultType")
     TBuildHostRun = Literal["build", "host", "run"]
+
+
+log = getLogger(__name__)
 
 
 class _Validated:
@@ -177,11 +181,19 @@ class Ecosystems(UserDict, _Validated, _FromPathOrUrlOrDefault):
 class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     default_schema: str = DEFAULT_MAPPING_SCHEMA_URL
     default_source: str = DEFAULT_MAPPING_URL_TEMPLATE
-    default_operator_mapping = {
+    default_specifier_templates = {
+        "name_only": "{name}",
+        "exact_version": "{name}==={version}",
         "and": ",",
-        "separator": "",
-        **{v: k for (k, v) in Specifier._operators.items()},
+        "equal": "{name}=={version}",
+        "greater_than": "{name}>{version}",
+        "greater_than_equal": "{name}>={version}",
+        "less_than": "{name}<{version}",
+        "less_than_equal": "{name}<={version}",
+        "not_equal": "{name}!={version}",
     }
+    default_install_command_multiple_specifiers: Literal["always", "name-only", "never"] = "always"
+    default_requires_elevation: bool = False
 
     @property
     def name(self) -> str | None:
@@ -278,8 +290,9 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         dep_url: str,
         package_manager: str,
         specs_type: TBuildHostRun | Iterable[TBuildHostRun] | None = None,
+        with_version: bool = True,
         **kwargs,
-    ) -> Iterable[list[str]]:
+    ) -> Iterable[list[list[str]]]:
         if "@" in dep_url and not dep_url.startswith("dep:virtual/"):
             # TODO: Virtual versions are not implemented
             # (e.g. how to map a language standard to a concrete version)
@@ -293,9 +306,10 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         mgr = self.get_package_manager(package_manager)
         for entry in self.iter_by_id(dep_url, **kwargs):
             specs = list(dict.fromkeys(s for key in specs_type for s in entry["specs"][key]))
-            if version:
-                specs = [self._add_version_to_spec(spec, version, mgr) for spec in specs]
-            yield specs
+            if with_version and version:
+                yield [self._add_version_to_spec(name, version, mgr) for name in specs]
+            else:
+                yield [[spec] for spec in specs]
 
     def iter_install_commands(
         self,
@@ -304,13 +318,22 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         specs_type: TBuildHostRun | Iterable[TBuildHostRun] | None = None,
     ) -> Iterable[list[str]]:
         mgr = self.get_package_manager(package_manager)
-        for specs in self.iter_specs_by_id(dep_url, package_manager, specs_type):
-            yield self.build_install_command(mgr, specs)
+        multiple_specifiers = mgr["commands"]["install"].get("multiple_specifiers", "always")
+        for args_per_spec in self.iter_specs_by_id(dep_url, package_manager, specs_type):
+            if multiple_specifiers == "always":
+                print("always", args_per_spec)
+                yield self.build_install_command(
+                    mgr, [arg for args in args_per_spec for arg in args]
+                )
+            else:
+                print("never", args_per_spec)
+                for args in args_per_spec:
+                    yield self.build_install_command(mgr, args)
 
     def build_install_command(
         self,
         package_manager: dict[str, Any],
-        specs: list[str],
+        spec_args: list[str],
     ) -> list[str]:
         cmd = []
         install_command = package_manager["commands"]["install"]
@@ -318,9 +341,9 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
             # TODO: Add a system to infer type of elevation required (sudo vs Windows AUC)
             cmd.append("sudo")
         for arg in install_command["command"]:
-            if "{}" in arg:
-                for spec in specs:
-                    cmd.append(arg.replace("{}", spec))
+            print(spec_args)
+            if arg == "{}":
+                cmd.extend(spec_args)
             else:
                 cmd.append(arg)
         return cmd
@@ -332,8 +355,11 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         specs_type: TBuildHostRun | Iterable[TBuildHostRun] | None = None,
     ) -> Iterable[list[str]]:
         mgr = self.get_package_manager(package_manager)
-        for specs in self.iter_specs_by_id(dep_url, package_manager, specs_type):
-            yield from self.build_query_commands(mgr, specs)
+        for specs in self.iter_specs_by_id(
+            dep_url, package_manager, specs_type, with_version=False
+        ):
+            for spec_args in specs:
+                yield from self.build_query_commands(mgr, spec_args)
 
     def build_query_commands(
         self,
@@ -350,45 +376,81 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
                 # TODO: Add a system to infer type of elevation required (sudo vs Windows AUC)
                 cmd.append("sudo")
             for arg in query_command["command"]:
+                # TODO: Handle multi-arg {} replacement
                 cmd.append(arg.replace("{}", spec))
             cmds.append(cmd)
         return cmds
 
-    def _add_version_to_spec(self, name: str, version: str, package_manager: dict) -> str:
-        operator_mapping_config = package_manager.get("version_operators")
-        if operator_mapping_config == {} or not version:
-            return name
+    def _add_version_to_spec(self, name: str, version: str, package_manager: dict) -> list[str]:
+        """
+        Given a package name, add the version information after mapping properly. We need
+        to account for name-only, exact-version-only and ranges-supported cases. The first
+        two are simple templates, the third one is a bit more involved.
 
-        final_operator_mapping = self.default_operator_mapping.copy()
-        if operator_mapping_config:
-            final_operator_mapping.update(operator_mapping_config)
+        The templates are given the package manager info, and are all a list of strings.
 
-        converted_versions = []
-        for source_version_part in version.split(","):
-            source_version_part = self._ensure_specifier_compatible(source_version_part)
-            parsed = Specifier(source_version_part)
-            source_operator = parsed.operator
-            operator_key = Specifier._operators[source_operator]
-            converted_operator = final_operator_mapping[operator_key]
-            # Replace the original PEP440 operator with the target one
-            if converted_operator is None:
-                continue  # TODO: Warn? Error?
-            converted = source_version_part.replace(source_operator, converted_operator)
-            converted_versions.append(converted)
+        - Name-only: Replace `{name}` in all items.
+        - Exact-version-only: Replace `{name}` and `{version}` in all items. Need
+          to ensure the version passed is NOT a range.
+        - Ranges: Parse the version into constraints (they'll come comma-separated if more
+          than one), and for each constraint parse the operator and version value. Pick the
+          operator template and replace `{op}` and `{version}`. Then, if `and` is a string,
+          join them. Pick the `syntax` template and replace `{name}` and `{ranges}` for each
+          item in the list. If `and` was None, then "explode" the items containing `{ranges}`
+          once per parsed constraint.
 
-        if converted_versions:
-            # Join the converted parts using the target 'and' string
-            merged_versions = final_operator_mapping["and"].join(converted_versions)
-            # Prepend the target separator
-            return f"{name}{final_operator_mapping['separator']}{merged_versions}"
+        Note: Exploded constraints require multiple-specifiers=always.
+        """
+        if not version.startswith(("=", ">", "<", "!", "~")):
+            version = f"==={version}"
+        constraints = version.split(",")
+        syntax = package_manager["specifier_syntax"]
+        if len(constraints) == 1 and (constraint := Specifier(constraints[0])).operator == "===":
+            exact_version_template = syntax["exact_version"]
+            if exact_version_template:
+                # exact version
+                return [
+                    item.format(name=name, version=constraint.version)
+                    for item in exact_version_template
+                ]
+            else:
+                # drop to name-only syntax
+                log.info(
+                    "Exact versioning not supported, using name-only syntax for %s %s",
+                    name,
+                    version,
+                )
+                return [
+                    item.format(name=name, version=constraint.version)
+                    for item in syntax["name_only"]
+                ]
+        # This is range-versions territory
+        mapped_constraints = []
+        version_ranges_syntax = syntax.get("version_ranges") or {}
+        for constraint in constraints:
+            constraint = Specifier(constraint)
+            self._validate_specifier(name, constraint)
+            constraint_template = version_ranges_syntax[constraint._operators[constraint.operator]]
+            mapped_constraint = constraint_template.format(name=name, version=constraint.version)
+            mapped_constraints.append(mapped_constraint)
+        result = []
+        if version_ranges_syntax["and"] is None:
+            for item in version_ranges_syntax["syntax"]:
+                for range_ in mapped_constraints:
+                    result.append(item.format(name=name, ranges=range_))
+        else:
+            ranges = version_ranges_syntax["and"].join(mapped_constraints)
+            for item in version_ranges_syntax["syntax"]:
+                result.append(item.format(name=name, ranges=ranges))
+        return result
 
-        # Return only name if no valid/convertible version parts were found
-        return name
-
-    def _ensure_specifier_compatible(self, value: str) -> Specifier:
-        if not set(value).intersection("<>=!~"):
-            return f"==={value}"
-        return value
+    def _validate_specifier(self, name: str, specifier: Specifier) -> None:
+        not_supported = ("~=", "===")
+        if specifier.operator in not_supported:
+            raise ValueError(
+                f"Package {name} has invalid operator {specifier.operator} "
+                f"in constraint {specifier}"
+            )
 
 
 @cache
