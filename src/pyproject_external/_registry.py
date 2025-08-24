@@ -279,111 +279,178 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
             specs = {"build": specs, "host": specs, "run": specs}
         return specs
 
-    def get_package_manager(self, name: str) -> dict[str, Any]:
+    def get_package_manager(self, name: str) -> PackageManager:
+        """
+        Finds package manager by `name`, if present.
+        """
         for manager in self.data["package_managers"]:
             if manager["name"] == name:
-                return manager
+                return PackageManager.from_mapping_entry(manager)
         raise ValueError(f"Could not find '{name}' in {self.data['package_managers']}")
 
     def iter_specs_by_id(
         self,
         dep_url: str,
-        package_manager: str,
         specs_type: TBuildHostRun | Iterable[TBuildHostRun] | None = None,
-        with_version: bool = True,
         **kwargs,
-    ) -> Iterable[list[list[str]]]:
+    ) -> Iterable[list[MappedSpec]]:
+        """
+        Yields all the specs found for the identifier `dep_url` to be consumed by a command line
+        application.
+
+        :param dep_url: The DepURL identifier to obtain specs from.
+        :param package_manager: The name of the package manager that will provide the command line
+            argument syntax.
+        :param specs_type: Which category of specs to return, or all of them.
+        :param with_version: Whether to transform the version constraints, if available and
+            applicable.
+        :yields: A list of lists of strings. Each `dep_url` may correspond to more than one
+            package name. Each package name may be expressed by more than one command line
+            argument. Hence the double nested list.
+        """
         if "@" in dep_url and not dep_url.startswith("dep:virtual/"):
             # TODO: Virtual versions are not implemented
             # (e.g. how to map a language standard to a concrete version)
             dep_url, version = dep_url.split("@", 1)
         else:
-            version = None
+            version = ""
         if specs_type is None:
             specs_type = ("build", "host", "run")
         elif isinstance(specs_type, str):
             specs_type = (specs_type,)
-        mgr = self.get_package_manager(package_manager)
         for entry in self.iter_by_id(dep_url, **kwargs):
             specs = list(dict.fromkeys(s for key in specs_type for s in entry["specs"][key]))
-            if with_version and version:
-                yield [self._add_version_to_spec(name, version, mgr) for name in specs]
-            else:
-                yield [[spec] for spec in specs]
+            yield [MappedSpec(name, version) for name in specs]
 
-    def iter_install_commands(
+    def iter_commands(
         self,
+        command_type: Literal["install", "query"],
         dep_url: str,
         package_manager: str,
         specs_type: TBuildHostRun | Iterable[TBuildHostRun] | None = None,
-    ) -> Iterable[list[str]]:
-        mgr = self.get_package_manager(package_manager)
-        multiple_specifiers = mgr["commands"]["install"].get("multiple_specifiers", "always")
-        for args_per_spec in self.iter_specs_by_id(dep_url, package_manager, specs_type):
-            if multiple_specifiers == "always":
-                print("always", args_per_spec)
-                yield self.build_install_command(
-                    mgr, [arg for args in args_per_spec for arg in args]
-                )
-            else:
-                print("never", args_per_spec)
-                for args in args_per_spec:
-                    yield self.build_install_command(mgr, args)
+        **kwargs,
+    ) -> Iterable[list[Command]]:
+        """
+        Yields `command_type` Command objects for the identifier `dep_url` and `package_manager`.
 
-    def build_install_command(
-        self,
-        package_manager: dict[str, Any],
-        spec_args: list[str],
-    ) -> list[str]:
-        cmd = []
-        install_command = package_manager["commands"]["install"]
-        if install_command.get("requires_elevation", False):
+        :param command_type: Which type of command to generate: install or query.
+        :param dep_url: The DepURL to install.
+        :param package_manager: Name of the package manager that will provide the command syntax.
+        :param specs_type: Which category of specs to process, or all of them.
+        :yields: List of Commands necessary to install the specs of a given mapping entry.
+            If the package manager allows multiple specifiers, this list will only contain
+            one command. Otherwise, the list will contain one command per package.
+        """
+        mgr = self.get_package_manager(package_manager)
+        for specs in self.iter_specs_by_id(dep_url, specs_type, **kwargs):
+            yield mgr.get_commands(command_type, specs)
+
+
+@dataclass
+class CommandInstructions:
+    command_template: list[str]
+    requires_elevation: bool
+    multiple_specifiers: Literal["always", "name-only", "never"]
+
+    def render_template(self) -> list[Command]:
+        template = []
+        if self.requires_elevation:
             # TODO: Add a system to infer type of elevation required (sudo vs Windows AUC)
-            cmd.append("sudo")
-        for arg in install_command["command"]:
-            print(spec_args)
+            template.append("sudo")
+        template.extend(self.command_template)
+        return template
+
+
+@dataclass
+class MappedSpec:
+    name: str
+    version: str
+
+
+@dataclass
+class Command:
+    template: list[str]
+    arguments: list[str]
+
+    @classmethod
+    def merge(cls, *commands: Self) -> Self:
+        return cls(
+            template=commands[0].template,
+            arguments=[arg for command in commands for arg in command.arguments],
+        )
+
+    def render(self) -> list[str]:
+        cmd = []
+        for arg in self.template:
             if arg == "{}":
-                cmd.extend(spec_args)
+                cmd.extend(self.arguments)
             else:
                 cmd.append(arg)
         return cmd
 
-    def iter_query_commands(
-        self,
-        dep_url: str,
-        package_manager: str,
-        specs_type: TBuildHostRun | Iterable[TBuildHostRun] | None = None,
-    ) -> Iterable[list[str]]:
-        mgr = self.get_package_manager(package_manager)
-        for specs in self.iter_specs_by_id(
-            dep_url, package_manager, specs_type, with_version=False
-        ):
-            for spec_args in specs:
-                yield from self.build_query_commands(mgr, spec_args)
 
-    def build_query_commands(
-        self,
-        package_manager: dict[str, Any],
-        specs: list[str],
-    ) -> list[list[str]]:
-        query_command = package_manager["commands"].get("query")
-        if not query_command:
-            return [[]]
+@dataclass
+class PackageManager:
+    name: str
+    install: CommandInstructions
+    query: CommandInstructions
+    name_only_syntax: list[str]
+    exact_version_syntax: list[str] | None
+    version_ranges_syntax: list[str] | None
+    version_ranges_and: str | None
+    version_ranges_equal: str | None
+    version_ranges_greater_than: str | None
+    version_ranges_greater_than_equal: str | None
+    version_ranges_less_than: str | None
+    version_ranges_less_than_equal: str | None
+    version_ranges_not_equal: str | None
+
+    @classmethod
+    def from_mapping_entry(cls, entry: dict[str, Any]) -> Self:
+        version_ranges = entry["specifier_syntax"].get("version_ranges") or {}
+        return cls(
+            name=entry["name"],
+            install=CommandInstructions(
+                command_template=entry["commands"]["install"]["command"],
+                multiple_specifiers=entry["commands"]["install"].get(
+                    "multiple_specifiers", "always"
+                ),
+                requires_elevation=entry["commands"]["install"].get("requires_elevation", False),
+            ),
+            query=CommandInstructions(
+                command_template=entry["commands"]["query"]["command"],
+                multiple_specifiers=entry["commands"]["query"].get("multiple_specifiers", "never"),
+                requires_elevation=entry["commands"]["query"].get("requires_elevation", False),
+            ),
+            name_only_syntax=entry["specifier_syntax"]["name_only"],
+            exact_version_syntax=entry["specifier_syntax"]["exact_version"],
+            version_ranges_syntax=version_ranges.get("syntax"),
+            version_ranges_and=version_ranges.get("and"),
+            version_ranges_equal=version_ranges.get("equal"),
+            version_ranges_greater_than=version_ranges.get("greater_than"),
+            version_ranges_greater_than_equal=version_ranges.get("greater_than_equal"),
+            version_ranges_less_than=version_ranges.get("less_than"),
+            version_ranges_less_than_equal=version_ranges.get("less_than_equal"),
+            version_ranges_not_equal=version_ranges.get("not_equal"),
+        )
+
+    def get_commands(
+        self, command: Literal["install", "query"], specs: list[MappedSpec]
+    ) -> list[Command]:
+        instructions: CommandInstructions = getattr(self, command)
+        all_args = [self.render_spec(spec) for spec in specs]
+        if instructions.multiple_specifiers == "always":
+            return [Command(instructions.render_template(), list(chain(*all_args)))]
+        if instructions.multiple_specifiers == "name-only":
+            return [Command()]  # TODO
         cmds = []
-        for spec in specs:
-            cmd = []
-            if query_command.get("requires_elevation", False):
-                # TODO: Add a system to infer type of elevation required (sudo vs Windows AUC)
-                cmd.append("sudo")
-            for arg in query_command["command"]:
-                # TODO: Handle multi-arg {} replacement
-                cmd.append(arg.replace("{}", spec))
-            cmds.append(cmd)
+        for args in all_args:
+            cmds.append(Command(instructions.render_template(), args))
         return cmds
 
-    def _add_version_to_spec(self, name: str, version: str, package_manager: dict) -> list[str]:
+    def render_spec(self, spec: MappedSpec, with_version: bool = True) -> list[str]:
         """
-        Given a package name, add the version information after mapping properly. We need
+        Given a MappedSpec, generate the list of arguments for this package manager. We need
         to account for name-only, exact-version-only and ranges-supported cases. The first
         two are simple templates, the third one is a bit more involved.
 
@@ -401,47 +468,50 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
 
         Note: Exploded constraints require multiple-specifiers=always.
         """
-        if not version.startswith(("=", ">", "<", "!", "~")):
-            version = f"==={version}"
+        if not with_version or not spec.version:
+            return [arg.format(name=spec.name) for arg in self.name_only_syntax]
+
+        if not spec.version.startswith(("=", ">", "<", "!", "~")):
+            version = f"==={spec.version}"
+        else:
+            version = spec.version
         constraints = version.split(",")
-        syntax = package_manager["specifier_syntax"]
         if len(constraints) == 1 and (constraint := Specifier(constraints[0])).operator == "===":
-            exact_version_template = syntax["exact_version"]
-            if exact_version_template:
+            if self.exact_version_syntax:
                 # exact version
                 return [
-                    item.format(name=name, version=constraint.version)
-                    for item in exact_version_template
+                    item.format(name=spec.name, version=constraint.version)
+                    for item in self.exact_version_syntax
                 ]
-            else:
-                # drop to name-only syntax
-                log.info(
-                    "Exact versioning not supported, using name-only syntax for %s %s",
-                    name,
-                    version,
-                )
-                return [
-                    item.format(name=name, version=constraint.version)
-                    for item in syntax["name_only"]
-                ]
+            # drop to name-only syntax
+            log.info(
+                "Exact versioning not supported, using name-only syntax for %s %s",
+                spec.name,
+                version,
+            )
+            return [arg.format(name=spec.name) for arg in self.name_only_syntax]
+
         # This is range-versions territory
         mapped_constraints = []
-        version_ranges_syntax = syntax.get("version_ranges") or {}
         for constraint in constraints:
             constraint = Specifier(constraint)
-            self._validate_specifier(name, constraint)
-            constraint_template = version_ranges_syntax[constraint._operators[constraint.operator]]
-            mapped_constraint = constraint_template.format(name=name, version=constraint.version)
+            self._validate_specifier(spec.name, constraint)
+            constraint_template = getattr(
+                self, f"version_ranges_{constraint._operators[constraint.operator]}"
+            )
+            mapped_constraint = constraint_template.format(
+                name=spec.name, version=constraint.version
+            )
             mapped_constraints.append(mapped_constraint)
         result = []
-        if version_ranges_syntax["and"] is None:
-            for item in version_ranges_syntax["syntax"]:
+        if self.version_ranges_and is None:
+            for item in self.version_ranges_syntax:
                 for range_ in mapped_constraints:
-                    result.append(item.format(name=name, ranges=range_))
+                    result.append(item.format(name=spec.name, ranges=range_))
         else:
-            ranges = version_ranges_syntax["and"].join(mapped_constraints)
-            for item in version_ranges_syntax["syntax"]:
-                result.append(item.format(name=name, ranges=ranges))
+            ranges = self.version_ranges_and.join(mapped_constraints)
+            for item in self.version_ranges_syntax:
+                result.append(item.format(name=spec.name, ranges=ranges))
         return result
 
     def _validate_specifier(self, name: str, specifier: Specifier) -> None:
