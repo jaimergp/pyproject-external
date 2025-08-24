@@ -286,21 +286,32 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
 
     @property
     def name(self) -> str | None:
+        "Name of the mapping."
         return self.get("name")
 
     @property
     def description(self) -> str | None:
+        "Description of the mapping."
         return self.get("description")
 
     @property
     def mappings(self) -> list[dict[str, Any]]:
-        return self.data.get("package_managers", [])
+        "Mapping entries in the document, as a list of dictionaries."
+        return self.data.get("mappings", [])
 
     @property
     def package_managers(self) -> list[dict[str, Any]]:
+        "List of raw package manager details, as dictionaries."
         return self.data.get("package_managers", [])
 
     def iter_all(self, resolve_specs: bool = True) -> Iterable[dict[str, Any]]:
+        """
+        Iterate over all the mapping entries.
+
+        :param resolve_specs: Whether to process `specs_from` data with the underlying specs.
+            If set, all the `specs_from` items will be replaced with `specs`.
+        :yields: Mapping entries, as dictionaries.
+        """
         for entry in self.data["mappings"]:
             if resolve_specs:
                 entry = entry.copy()
@@ -322,6 +333,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         :param only_mapped: Skip entries with no mapped specs.
         :param resolve_specs: Process `specs_from` entries to populate `specs`.
         :param resolve_with_registry: Process `provides` aliases with a `Registry` instance.
+        :yields: Mapping entries as dictionaries.
         """
         key = key.split("@", 1)[0]  # remove version components
         keys = {key}
@@ -386,6 +398,9 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     def get_package_manager(self, name: str) -> PackageManager:
         """
         Finds package manager by `name`, if present.
+
+        :param name: Name of the package manager.
+        :returns: A `PackageManager` instance.
         """
         for manager in self.data["package_managers"]:
             if manager["name"] == name:
@@ -452,11 +467,23 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
 
 @dataclass
 class CommandInstructions:
+    """
+    Instructions to build a certain command.
+    """
     command_template: list[str]
     requires_elevation: bool
     multiple_specifiers: Literal["always", "name-only", "never"]
 
-    def render_template(self) -> list[Command]:
+    def __post_init__(self):
+        if len([arg for arg in self.command_template if arg == "{}"]) != 1:
+            raise ValueError("'command_template' must include one (and one only) `'{}'` item.")
+
+    def render_template(self) -> list[str]:
+        """
+        Processes the command template to inject the required elevation logic, if applicable.
+
+        :returns: List of arguments plus the template placeholder
+        """
         template = []
         if self.requires_elevation:
             # TODO: Add a system to infer type of elevation required (sudo vs Windows AUC)
@@ -467,23 +494,55 @@ class CommandInstructions:
 
 @dataclass
 class MappedSpec:
+    """
+    A dataclass storing the name and, optionally, version constraints of a mapped package specifier.
+    """
     name: str
     version: str
+
+    def __post_init__(self):
+        if not self.name:
+            raise ValueError("'name' cannot be empty.")
 
 
 @dataclass
 class Command:
+    """
+    A dataclass representing a templated (with one item being a `{}` placeholder) command,
+    with its arguments stored separately."""
     template: list[str]
     arguments: list[str]
 
+    def __post_init__(self):
+        if len([arg for arg in self.template if arg == "{}"]) != 1:
+            raise ValueError("'template' must include one (and one only) `'{}'` item.")
+        if not self.arguments:
+            raise ValueError("'arguments' cannot be empty.")
+
     @classmethod
     def merge(cls, *commands: Self) -> Self:
+        """
+        Merge several Command instances into a single one, with all their arguments
+        concatenated in order.
+
+        :param commands: Command instances to merge.
+        :returns: Command instance with all arguments concatenated.
+        """
+        if len(commands) == 1:
+            return cls(commands[0].template, commands[0].arguments)
+        if not all(commands[0].template == command.template for command in commands[1:]):
+            raise ValueError("All Command instances must have the same template.")
         return cls(
             template=commands[0].template,
             arguments=[arg for command in commands for arg in command.arguments],
         )
 
     def render(self) -> list[str]:
+        """
+        Injects `arguments` in the position indicated by the `{}` placeholder item in `template`.
+
+        :returns: List of arguments ready to be consumed by `subprocess.run`-like APIs.
+        """
         cmd = []
         for arg in self.template:
             if arg == "{}":
@@ -492,9 +551,19 @@ class Command:
                 cmd.append(arg)
         return cmd
 
+    def __iter__(self) -> Iterable[str]:
+        """
+        Iterate over the rendered command.
+
+        :yields: Arguments in the rendered command.
+        """
+        yield from self.render()
 
 @dataclass
 class PackageManager:
+    """
+    A dataclass representing a `Mapping["package_managers"]` entry.
+    """
     name: str
     install: CommandInstructions
     query: CommandInstructions
@@ -511,6 +580,12 @@ class PackageManager:
 
     @classmethod
     def from_mapping_entry(cls, entry: dict[str, Any]) -> Self:
+        """
+        Instantiate `PackageManager` from a dict entry found in a `Mapping["package_managers"]`.
+
+        :param entry: A dictionary as found in the `Mapping["package_managers"]` list.
+        :returns: A `PackageManager` instance.
+        """
         version_ranges = entry["specifier_syntax"].get("version_ranges") or {}
         return cls(
             name=entry["name"],
@@ -539,8 +614,17 @@ class PackageManager:
         )
 
     def get_commands(
-        self, command: Literal["install", "query"], specs: list[MappedSpec]
+        self, command: Literal["install", "query"], specs: Iterable[MappedSpec]
     ) -> list[Command]:
+        """
+        Build the commands necessary to process the `specs` list.
+
+        :param command: Type of command to generate (`install` or `query`).
+        :param specs: The `MappedSpec` objects to process.
+        :returns: A list of `Command` objects. If the package manager supports multiple
+            specifiers per command, this list will only contain one `Command`. Otherwise,
+            it will contain one `Command` per `MappedSpec`.
+        """
         instructions: CommandInstructions = getattr(self, command)
         all_args = [self.render_spec(spec) for spec in specs]
         if instructions.multiple_specifiers == "always":
