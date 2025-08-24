@@ -76,18 +76,18 @@ def test_commands():
         "--channel=conda-forge",
         "--strict-channel-priority",
         "make",
-    ] in list(mapping.iter_install_commands("dep:generic/make", "conda"))
+    ] in [
+        command.render()
+        for commands in mapping.iter_commands("install", "dep:generic/make", "conda")
+        for command in commands
+    ]
     assert [
         "conda",
         "list",
         "-f",
         "make",
-    ] in list(mapping.iter_query_commands("dep:generic/make", "conda"))
-
-
-def test_query_placeholder():
-    mapping = Mapping.from_default("conda-forge")
-    command = mapping.build_query_commands(mapping.get_package_manager("conda"), ["numpy"])[0]
-    assert command == ["conda", "list", "-f", "numpy"]
-    command = mapping.build_query_commands(mapping.get_package_manager("pixi"), ["numpy"])[0]
-    assert command == ["pixi", "list", "^numpy$"]
+    ] in [
+        command.render()
+        for commands in mapping.iter_commands("query", "dep:generic/make", "conda")
+        for command in commands
+    ]

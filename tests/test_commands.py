@@ -3,6 +3,7 @@
 import shutil
 import subprocess
 import sys
+from itertools import chain
 
 import pytest
 
@@ -25,9 +26,10 @@ def mapping_instance():
     ),
 )
 def test_build_command(dep_url, expected):
-    mapping = Mapping.from_default("conda-forge")
-    for specs in mapping.iter_specs_by_id(dep_url, "conda"):
-        assert [expected] in specs
+    mapping: Mapping = Mapping.from_default("conda-forge")
+    mgr = mapping.get_package_manager("conda")
+    for specs in mapping.iter_specs_by_id(dep_url):
+        assert expected in chain(*[mgr.render_spec(spec) for spec in specs])
 
 
 @pytest.mark.skipif(not shutil.which("conda"), reason="conda not available")

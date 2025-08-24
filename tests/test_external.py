@@ -16,20 +16,20 @@ def test_external():
         build-requires = ["dep:virtual/compiler/c"]
         """
     )
-    ext = External.from_pyproject_data(tomllib.loads(toml))
+    ext: External = External.from_pyproject_data(tomllib.loads(toml))
     assert len(ext.build_requires) == 1
     assert ext.build_requires[0] == DepURL.from_string("dep:virtual/compiler/c")
     assert ext.map_dependencies(
         "conda-forge",
-        key="build_requires",
+        categories=("build_requires",),
         package_manager="conda",
-    ) == [["c-compiler"], ["python"]]
-    install_command = ext.install_commands(
+    ) == ["c-compiler", "python"]
+    install_commands = ext.install_commands(
         "conda-forge",
-        key="build_requires",
+        categories=("build_requires",),
         package_manager="conda",
-    )[0]
-    assert set(["conda", "install", "c-compiler", "python"]).issubset(install_command)
+    )
+    assert set(["conda", "install", "c-compiler", "python"]).issubset(install_commands[0].render())
 
 
 def test_external_optional():
@@ -51,20 +51,16 @@ def test_external_optional():
         DepURL.from_string("dep:generic/ninja"),
         DepURL.from_string("dep:generic/arrow"),
     ]
-    assert [
-        spec
-        for specs in ext.map_dependencies(
-            "conda-forge",
-            key="optional_build_requires",
-            package_manager="conda",
-        )
-        for spec in specs
-    ] == ["make", "ninja", "libarrow-all"]
+    assert ext.map_dependencies(
+        "conda-forge",
+        categories=("optional_build_requires",),
+        package_manager="conda",
+    ) == ["make", "ninja", "libarrow-all"]
     assert set(["conda", "install", "make", "ninja", "libarrow-all"]).issubset(
         ext.install_commands(
             "conda-forge",
             package_manager="conda",
-        )[0]
+        )[0].render()
     )
 
 
@@ -90,20 +86,16 @@ def test_external_dependency_groups():
         DepURL.from_string("dep:generic/make"),
         DepURL.from_string("dep:generic/ninja"),
     ]
-    assert [
-        spec
-        for specs in ext.map_dependencies(
-            "conda-forge",
-            key="dependency_groups",
-            package_manager="conda",
-        )
-        for spec in specs
-    ] == ["libarrow-all", "make", "ninja"]
+    assert ext.map_dependencies(
+        "conda-forge",
+        categories=("dependency_groups",),
+        package_manager="conda",
+    ) == ["libarrow-all", "make", "ninja"]
     assert set(["conda", "install", "make", "ninja", "libarrow-all"]).issubset(
         ext.install_commands(
             "conda-forge",
             package_manager="conda",
-        )[0]
+        )[0].render()
     )
 
 
