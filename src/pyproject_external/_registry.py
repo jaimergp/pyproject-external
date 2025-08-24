@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import json
 from collections import UserDict
+from dataclasses import dataclass
 from functools import cache
+from itertools import chain
 from logging import getLogger
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -110,10 +112,22 @@ class _FromPathOrUrlOrDefault:
 
 
 class Registry(UserDict, _Validated, _FromPathOrUrlOrDefault):
+    """
+    Dict-like interface to query a central registry document.
+
+    In addition to all the usual dictionary API, this class adds a few iterators,
+    all of them named `iter_*()`.
+    """
+
     default_schema: str = DEFAULT_REGISTRY_SCHEMA_URL
     default_source: str = DEFAULT_REGISTRY_URL
 
     def iter_unique_ids(self) -> Iterable[str]:
+        """
+        Iterate over all unique DepURLs found in the registry.
+
+        :yields: DepURL strings.
+        """
         seen = set()
         for item in self.iter_all():
             if (id_ := item["id"]) not in seen:
@@ -121,14 +135,30 @@ class Registry(UserDict, _Validated, _FromPathOrUrlOrDefault):
                 yield id_
 
     def iter_by_id(self, key: str) -> Iterable[dict[str, Any]]:
+        """
+        Iterate all registry definitions that match the identifier given by `key`.
+
+        :yields: Dictionaries corresponding to registry items.
+        """
         for item in self.iter_all():
             if item["id"] == key:
                 yield item
 
     def iter_all(self) -> Iterable[dict[str, Any]]:
+        """
+        Iterate over all registry definitions.
+
+        :yields: Dictionaries corresponding to registry items.
+        """
         yield from self.data["definitions"]
 
     def iter_canonical(self) -> Iterable[dict[str, Any]]:
+        """
+        Iterate over all registry definitions whose identifiers are considered canonical
+        (not aliased to another non-virtual identifier).
+
+        :yields: Dictionaries corresponding to registry items.
+        """
         for item in self.iter_all():
             if (
                 item["id"].startswith("dep:virtual/")
@@ -138,38 +168,80 @@ class Registry(UserDict, _Validated, _FromPathOrUrlOrDefault):
                 yield item
 
     def iter_aliases(self) -> Iterable[dict[str, Any]]:
+        """
+        Iterate over all registry definitions that "provide" an alias to other definitions.
+
+        :yields: Dictionaries corresponding to registry items.
+        """
         for item in self.iter_all():
             if item.get("provides"):
                 yield item
 
     def iter_generic(self) -> Iterable[dict[str, Any]]:
+        """
+        Iterate over all registry definitions whose type is `generic`
+
+        :yields: Dictionaries corresponding to registry items.
+        """
         for item in self.iter_all():
             if item["id"].startswith("dep:generic/"):
                 yield item
 
     def iter_virtual(self) -> Iterable[dict[str, Any]]:
+        """
+        Iterate over all registry definitions whose type is `virtual`.
+
+        :yields: Dictionaries corresponding to registry items.
+        """
         for item in self.iter_all():
             if item["id"].startswith("dep:virtual/"):
                 yield item
 
 
 class Ecosystems(UserDict, _Validated, _FromPathOrUrlOrDefault):
+    """
+    Dict-like interface to query a central list of ecosystems document.
+
+    In addition to all the usual dictionary API, this class adds a few iterators,
+    all of them named `iter_*()`, and a getter.
+    """
+
     default_schema: str = DEFAULT_ECOSYSTEMS_SCHEMA_URL
     default_source = DEFAULT_ECOSYSTEMS_URL
 
     # TODO: These methods might need a better API
 
-    def iter_names(self) -> Iterable[tuple[str, dict[Literal["mapping"], str]]]:
+    def iter_names(self) -> Iterable[str]:
+        """
+        Iterate over all the known ecosystem names.
+
+        :yields: Ecosystem names.
+        """
         yield from self.data.get("ecosystems", {})
 
     def iter_items(self) -> Iterable[tuple[str, dict[Literal["mapping"], str]]]:
+        """
+        Iterate over all the known ecosystem names, and their mapping location.
+
+        :yields: Tuples of ecosystem name plus their definition.
+        """
         yield from self.data.get("ecosystems", {}).items()
 
     def iter_mappings(self) -> Iterable[Mapping]:
-        for name, ecosystem in self.iter_items():
+        """
+        Iterate over all the known ecosystems, returned as `Mapping` objects.
+
+        :yields: A `Mapping` object per known ecosystem.
+        """
+        for _, ecosystem in self.iter_items():
             yield Mapping.from_url(ecosystem["mapping"])
 
     def get_mapping(self, name: str, default: _DefaultType = ...) -> Mapping | _DefaultType:
+        """
+        Get the `Mapping` object that corresponds to the given ecosystem `name`.
+
+        :returns: The `Mapping` object for this name.
+        """
         for item_name, ecosystem in self.iter_items():
             if name == item_name:
                 return Mapping.from_url(ecosystem["mapping"])
@@ -179,6 +251,23 @@ class Ecosystems(UserDict, _Validated, _FromPathOrUrlOrDefault):
 
 
 class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
+    """
+    A dict-like interface for the PEP 725 mapping documents.
+
+    These documents provide ecosystem-specific definitions for all the DepURL identifiers
+    mentioned in the central registry.
+
+    In addition to all the usual dictionary API, this class adds a few convenience properties
+    to access the top-level keys, and some iterator and getter methods:
+
+    - `iter_all()`: Iterate over all mapping entries, resolving if necessary.
+    - `iter_by_id()`: Iterate over mapping entries that match this DepURL, resolving if necessary.
+    - `iter_specs_by_id()`: Iterate over all the possible specifiers known for a given DepURL.
+    - `iter_commands()`: Iterate over all the install or query commands that can be generated
+      for the known specs of a given DepURL.
+    - `get_package_manager()`: Get the instructions for a given package manager name.s
+    """
+
     default_schema: str = DEFAULT_MAPPING_SCHEMA_URL
     default_source: str = DEFAULT_MAPPING_URL_TEMPLATE
     default_specifier_templates = {
@@ -227,6 +316,13 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         resolve_specs: bool = True,
         resolve_with_registry: Registry | None = None,
     ) -> Iterable[dict[str, Any]]:
+        """
+        Yields mapping entries matching `id` == `key`.
+
+        :param only_mapped: Skip entries with no mapped specs.
+        :param resolve_specs: Process `specs_from` entries to populate `specs`.
+        :param resolve_with_registry: Process `provides` aliases with a `Registry` instance.
+        """
         key = key.split("@", 1)[0]  # remove version components
         keys = {key}
         if resolve_with_registry is not None:
@@ -258,6 +354,11 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
                     yield entry
 
     def _resolve_specs(self, mapping_entry: dict[str, Any]) -> list[str]:
+        """
+        Retrieves specs given by its `specs_from` identifier, if present.
+
+        :returns: List of resolved specs.
+        """
         if specs := mapping_entry.get("specs"):
             return specs
         if specs_from := mapping_entry.get("specs_from"):
@@ -268,6 +369,9 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     def _normalize_specs(
         specs: str | list[str] | dict[str, str | list[str]],
     ) -> dict[str, list[str]]:
+        """
+        Normalizes `specs` entries so they are always in their full dictionary form.
+        """
         if isinstance(specs, str):
             specs = {"build": [specs], "host": [specs], "run": [specs]}
         elif hasattr(specs, "items"):  # assert all fields are present as lists
