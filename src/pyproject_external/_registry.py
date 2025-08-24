@@ -470,6 +470,7 @@ class CommandInstructions:
     """
     Instructions to build a certain command.
     """
+
     command_template: list[str]
     requires_elevation: bool
     multiple_specifiers: Literal["always", "name-only", "never"]
@@ -497,6 +498,7 @@ class MappedSpec:
     """
     A dataclass storing the name and, optionally, version constraints of a mapped package specifier.
     """
+
     name: str
     version: str
 
@@ -510,6 +512,7 @@ class Command:
     """
     A dataclass representing a templated (with one item being a `{}` placeholder) command,
     with its arguments stored separately."""
+
     template: list[str]
     arguments: list[str]
 
@@ -559,11 +562,13 @@ class Command:
         """
         yield from self.render()
 
+
 @dataclass
 class PackageManager:
     """
     A dataclass representing a `Mapping["package_managers"]` entry.
     """
+
     name: str
     install: CommandInstructions
     query: CommandInstructions
