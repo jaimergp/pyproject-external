@@ -7,7 +7,7 @@ import pytest
 import requests
 
 from pyproject_external import DepURL, Ecosystems, Mapping, Registry
-from pyproject_external._registry import ValidationErrors, _Validated
+from pyproject_external._registry import Command, ValidationErrors, _Validated
 
 
 @cache
@@ -361,7 +361,7 @@ def test_mapping_iter_commands_single_spec(depurl):
         assert commands[1].arguments == ["libarrow"]
 
 
-def test_commands():
+def test_mapping_commands():
     mapping = small_conda_forge_mapping()
     assert [
         "conda",
@@ -382,3 +382,29 @@ def test_commands():
         for commands in mapping.iter_commands("query", "dep:generic/make", "conda")
         for command in commands
     ]
+
+
+def test_command_validation():
+    with pytest.raises(ValueError):
+        Command(["pkg", "install"], ["name"])
+    with pytest.raises(ValueError):
+        Command(["pkg", "install", "{}", "{}"], ["name"])
+    with pytest.raises(ValueError):
+        Command(["pkg", "install", "{}{}"], ["name"])
+    # This one is ok
+    Command(["pkg", "install", "{}"], ["name"])
+
+
+def test_command_merge():
+    command1 = Command(["pkg", "install", "{}"], ["name1"])
+    command2 = Command(["pkg", "install", "{}"], ["name2"])
+    merged = Command.merge(command1, command2)
+    assert merged.template == ["pkg", "install", "{}"]
+    assert merged.arguments == ["name1", "name2"]
+
+
+def test_command_merge_wrong():
+    command1 = Command(["pkg", "install", "{}"], ["name1"])
+    command2 = Command(["pkg", "update", "{}"], ["name2"])
+    with pytest.raises(ValueError):
+        Command.merge(command1, command2)
