@@ -33,6 +33,12 @@ def small_conda_forge_mapping() -> Mapping:
                     "urls": {"feedstock": "https://github.com/conda-forge/arrow-cpp-feedstock"},
                 },
                 {
+                    "id": "dep:generic/multi-arrow",
+                    "description": "C++ libraries for Apache Arrow, with two specs",
+                    "specs": ["libarrow-all", "libarrow"],
+                    "urls": {"feedstock": "https://github.com/conda-forge/arrow-cpp-feedstock"},
+                },
+                {
                     "id": "dep:generic/make",
                     "description": "GNU Make",
                     "specs": "make",
@@ -67,7 +73,63 @@ def small_conda_forge_mapping() -> Mapping:
                             "syntax": ["{name}{ranges}"],
                         },
                     },
-                }
+                },
+                {
+                    "name": "name-only-conda",
+                    "commands": {
+                        "install": {
+                            "command": [
+                                "conda",
+                                "install",
+                                "{}",
+                            ],
+                            "multiple_specifiers": "name-only",
+                        },
+                        "query": {"command": ["conda", "list", "-f", "{}"]},
+                    },
+                    "specifier_syntax": {
+                        "exact_version": ["{name}", "--version", "{version}"],
+                        "name_only": ["{name}"],
+                        "version_ranges": {
+                            "and": ",",
+                            "equal": "={version}",
+                            "greater_than": ">{version}",
+                            "greater_than_equal": ">={version}",
+                            "less_than": "<{version}",
+                            "less_than_equal": "<={version}",
+                            "not_equal": "!={version}",
+                            "syntax": ["{name}{ranges}"],
+                        },
+                    },
+                },
+                {
+                    "name": "single-spec-conda",
+                    "commands": {
+                        "install": {
+                            "command": [
+                                "conda",
+                                "install",
+                                "{}",
+                            ],
+                            "multiple_specifiers": "never",
+                        },
+                        "query": {"command": ["conda", "list", "-f", "{}"]},
+                    },
+                    "specifier_syntax": {
+                        "exact_version": ["{name}", "--version", "{version}"],
+                        "name_only": ["{name}"],
+                        "version_ranges": {
+                            "and": ",",
+                            "equal": "={version}",
+                            "greater_than": ">{version}",
+                            "greater_than_equal": ">={version}",
+                            "less_than": "<{version}",
+                            "less_than_equal": "<={version}",
+                            "not_equal": "!={version}",
+                            "syntax": ["{name}{ranges}"],
+                        },
+                    },
+                },
             ],
         }
     )
@@ -266,6 +328,37 @@ def test_mapping_iter_commands(command_type):
     elif command_type == "query":
         assert commands[0].template == ["conda", "list", "-f", "{}"]
     assert commands[0].arguments == ["libarrow-all"]
+
+
+@pytest.mark.parametrize("depurl", ["dep:generic/multi-arrow", "dep:generic/multi-arrow@2"])
+def test_mapping_iter_commands_name_only(depurl):
+    mapping = small_conda_forge_mapping()
+    commands = next(mapping.iter_commands("install", depurl, "name-only-conda"))
+    assert isinstance(commands, list)
+    if "@" in depurl:  # versioned, several commands
+        assert len(commands) == 2
+        assert commands[0].template == commands[1].template == ["conda", "install", "{}"]
+        assert commands[0].arguments == ["libarrow-all", "--version", "2"]
+        assert commands[1].arguments == ["libarrow", "--version", "2"]
+    else:
+        assert len(commands) == 1
+        assert commands[0].template == ["conda", "install", "{}"]
+        assert commands[0].arguments == ["libarrow-all", "libarrow"]
+
+
+@pytest.mark.parametrize("depurl", ["dep:generic/multi-arrow", "dep:generic/multi-arrow@2"])
+def test_mapping_iter_commands_single_spec(depurl):
+    mapping = small_conda_forge_mapping()
+    commands = next(mapping.iter_commands("install", depurl, "single-spec-conda"))
+    assert isinstance(commands, list)
+    assert len(commands) == 2
+    assert commands[0].template == commands[1].template == ["conda", "install", "{}"]
+    if "@" in depurl:  # versioned, several arguments
+        assert commands[0].arguments == ["libarrow-all", "--version", "2"]
+        assert commands[1].arguments == ["libarrow", "--version", "2"]
+    else:
+        assert commands[0].arguments == ["libarrow-all"]
+        assert commands[1].arguments == ["libarrow"]
 
 
 def test_commands():
