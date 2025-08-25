@@ -228,10 +228,10 @@ def test_registry_dep_urls_are_parsable(dep_url):
 @pytest.mark.parametrize(
     "dep_url,error",
     [
-        ("pkg:generic/bad-scheme", ""),
-        ("absolutely-not-a-dep-urldep:virtual", ""),
-        ("dep:virtual/not-valid", ""),
-        ("dep:virtual/not-valid/name", ""),
+        ("pkg:generic/bad-scheme", 'purl is missing the required "dep" scheme'),
+        ("absolutely-not-a-dep-urldep:virtual", 'purl is missing the required "dep" scheme'),
+        ("dep:virtual/not-valid", "'dep:virtual/\\*' only accepts 'compiler' or 'interface'"),
+        ("dep:virtual/not-valid/name", "'dep:virtual/\\*' only accepts 'compiler' or 'interface'"),
     ],
 )
 def test_registry_dep_urls_fail_validation(dep_url, error):
@@ -616,6 +616,33 @@ _package_manager_names_only = PackageManager.from_mapping_entry(
         },
     },
 )
+_package_manager_gentoo = PackageManager.from_mapping_entry(
+    {
+        "name": "portage",
+        "commands": {
+            "install": {
+                "command": ["emerge", "{}"],
+                "multiple_specifiers": "always",
+                "requires_elevation": True,
+            },
+            "query": {"command": ["portageq", "has_version", "/", "{}"]},
+        },
+        "specifier_syntax": {
+            "exact_version": ["={name}-{version}"],
+            "name_only": ["{name}"],
+            "version_ranges": {
+                "and": None,
+                "equal": "={name}-{version}*",
+                "greater_than": ">{name}-{version}",
+                "greater_than_equal": ">={name}-{version}",
+                "less_than": "<{name}-{version}",
+                "less_than_equal": "<={name}-{version}",
+                "not_equal": None,
+                "syntax": ["{ranges}"],
+            },
+        },
+    }
+)
 
 
 @pytest.mark.parametrize(
@@ -638,6 +665,13 @@ _package_manager_names_only = PackageManager.from_mapping_entry(
         ),
         (_package_manager_exact_version_only, "libarrow-all", ">20", ValueError),
         (_package_manager_exact_version_only, "libarrow-all", "<22,>=21", ValueError),
+        (
+            _package_manager_gentoo,
+            "libarrow-all",
+            "<22,>=21",
+            ["<libarrow-all-22", ">=libarrow-all-21"],
+        ),
+        (_package_manager_gentoo, "libarrow-all", "!=21", ValueError),
     ),
 )
 def test_package_manager_render_spec(mgr, name, version, expected):

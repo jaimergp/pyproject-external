@@ -705,6 +705,7 @@ class PackageManager:
             if not self.exact_version_syntax:
                 raise ValueError(
                     "This package manager does not support exact version constraints."
+                    f"Spec name '{spec.name}' and version '{spec.version}'."
                 )
             return [
                 item.format(name=spec.name, version=constraint.version)
@@ -714,7 +715,10 @@ class PackageManager:
         # This is range-versions territory
 
         if not self.version_ranges_syntax:
-            raise ValueError("This package manager does not support version range constraints.")
+            raise ValueError(
+                "This package manager does not support version range constraints. "
+                f"Spec name '{spec.name}' and version '{spec.version}'."
+            )
 
         mapped_constraints = []
         for constraint in constraints:
@@ -723,6 +727,8 @@ class PackageManager:
             constraint_template = getattr(
                 self, f"version_ranges_{constraint._operators[constraint.operator]}"
             )
+            if constraint_template is None:
+                raise ValueError(f"Constraint '{constraint}' in '{spec.name}' is not supported.")
             mapped_constraint = constraint_template.format(
                 name=spec.name, version=constraint.version
             )
