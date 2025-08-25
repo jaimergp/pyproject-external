@@ -502,6 +502,9 @@ class MappedSpec:
         if not self.name:
             raise ValueError("'name' cannot be empty.")
 
+    def __hash__(self) -> int:
+        return hash(f"{self.name}-{self.version}")
+
 
 @dataclass
 class Command:
@@ -627,12 +630,36 @@ class PackageManager:
             it will contain one `Command` per `MappedSpec`.
         """
         instructions: CommandInstructions = getattr(self, command)
-        all_args = [self.render_spec(spec) for spec in specs]
+        all_args: list[list[str]] = []
+        versioned_args: list[list[str]] = []
+        unversioned_args: list[list[str]] = []
+        seen = set()
+        for spec in specs:
+            if spec in seen:
+                continue
+            seen.add(spec)
+            args = self.render_spec(spec)
+            if not args:
+                continue
+            all_args.append(args)
+            if spec.version:
+                versioned_args.append(args)
+            else:
+                unversioned_args.append(args)
         if instructions.multiple_specifiers == "always":
             return [Command(instructions.render_template(), list(chain(*all_args)))]
-        if instructions.multiple_specifiers == "name-only":
-            return [Command()]  # TODO
         cmds = []
+        if instructions.multiple_specifiers == "name-only":
+            if unversioned_args:
+                cmds.append(
+                    Command(
+                        instructions.render_template(),
+                        list(chain(*unversioned_args)),
+                    )
+                )
+            for args in versioned_args:
+                cmds.append(Command(instructions.render_template(), args))
+            return cmds
         for args in all_args:
             cmds.append(Command(instructions.render_template(), args))
         return cmds
