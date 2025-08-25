@@ -29,7 +29,7 @@ def test_external():
         categories=("build_requires",),
         package_manager="conda",
     )
-    assert set(["conda", "install", "c-compiler", "python"]).issubset(install_commands[0].render())
+    assert ["c-compiler", "python"] == install_commands[0].arguments
 
 
 def test_external_optional():
@@ -56,12 +56,10 @@ def test_external_optional():
         categories=("optional_build_requires",),
         package_manager="conda",
     ) == ["make", "ninja", "libarrow-all"]
-    assert set(["conda", "install", "make", "ninja", "libarrow-all"]).issubset(
-        ext.install_commands(
-            "conda-forge",
-            package_manager="conda",
-        )[0].render()
-    )
+    assert ["make", "ninja", "libarrow-all"] == ext.install_commands(
+        "conda-forge",
+        package_manager="conda",
+    )[0].arguments
 
 
 def test_external_dependency_groups():
@@ -91,12 +89,10 @@ def test_external_dependency_groups():
         categories=("dependency_groups",),
         package_manager="conda",
     ) == ["libarrow-all", "make", "ninja"]
-    assert set(["conda", "install", "make", "ninja", "libarrow-all"]).issubset(
-        ext.install_commands(
-            "conda-forge",
-            package_manager="conda",
-        )[0].render()
-    )
+    assert ["libarrow-all", "make", "ninja", ] == ext.install_commands(
+        "conda-forge",
+        package_manager="conda",
+    )[0].arguments
 
 
 def test_crude_error_message():
@@ -155,3 +151,64 @@ def test_informative_error_message_optional(caplog):
     ext = External.from_pyproject_data(tomllib.loads(toml))
     ext.map_dependencies("fedora", package_manager="dnf")
     assert "Is this dependency in the right category?" in caplog.text
+
+
+def test_external_map_dependencies():
+    toml = dedent(
+        """
+        [external.optional-build-requires]
+        extra = [
+            "dep:generic/arrow",
+        ]
+        """
+    )
+    ext: External = External.from_pyproject_data(tomllib.loads(toml))
+    assert ext.map_dependencies("conda-forge", package_manager="conda") == ["libarrow-all"]
+
+
+def test_external_map_versioned_dependencies():
+    toml = dedent(
+        """
+        [external.optional-build-requires]
+        extra = [
+            "dep:generic/arrow@2",
+        ]
+        """
+    )
+    ext: External = External.from_pyproject_data(tomllib.loads(toml))
+    assert ext.map_versioned_dependencies("conda-forge", package_manager="conda") == [
+        "libarrow-all==2"
+    ]
+
+
+def test_external_install_commands():
+    toml = dedent(
+        """
+        [external.optional-build-requires]
+        extra = [
+            "dep:generic/arrow",
+            "dep:generic/make",
+        ]
+        """
+    )
+    ext: External = External.from_pyproject_data(tomllib.loads(toml))
+    commands = ext.install_commands("conda-forge", package_manager="conda")
+    assert len(commands) == 1
+    assert commands[0].arguments == ["libarrow-all", "make"]
+
+
+def test_external_query_commands():
+    toml = dedent(
+        """
+        [external.optional-build-requires]
+        extra = [
+            "dep:generic/arrow",
+            "dep:generic/make",
+        ]
+        """
+    )
+    ext: External = External.from_pyproject_data(tomllib.loads(toml))
+    commands = ext.query_commands("conda-forge", package_manager="conda")
+    assert len(commands) == 2
+    assert commands[0].arguments == ["libarrow-all"]
+    assert commands[1].arguments == ["make"]
