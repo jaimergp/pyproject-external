@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2025 Quansight Labs
 
+import sys
 from functools import cache
 
 import pytest
 import requests
 
 from pyproject_external import DepURL, Ecosystems, Mapping, Registry
-from pyproject_external._registry import Command, ValidationErrors, _Validated
+from pyproject_external._registry import Command, CommandInstructions, ValidationErrors, _Validated
 
 
 @cache
@@ -408,3 +409,39 @@ def test_command_merge_wrong():
     command2 = Command(["pkg", "update", "{}"], ["name2"])
     with pytest.raises(ValueError):
         Command.merge(command1, command2)
+
+
+def test_command_instructions():
+    instr = CommandInstructions(
+        command_template=["pkg", "install", "{}"],
+        requires_elevation=False,
+        multiple_specifiers="always",
+    )
+    assert instr.render_template() == ["pkg", "install", "{}"]
+
+
+def test_command_instructions_elevation():
+    instr = CommandInstructions(
+        command_template=["pkg", "install", "{}"],
+        requires_elevation=True,
+        multiple_specifiers="always",
+    )
+    if sys.platform.startswith("win"):
+        assert instr.render_template() == ["runas", "pkg", "install", "{}"]
+    else:
+        assert instr.render_template() == ["sudo", "pkg", "install", "{}"]
+
+
+def test_command_instructions_wrong():
+    with pytest.raises(ValueError):
+        CommandInstructions(
+            command_template=["pkg", "install"],
+            requires_elevation=False,
+            multiple_specifiers="always",
+        )
+    with pytest.raises(ValueError):
+        CommandInstructions(
+            command_template=["pkg", "install", "{}"],
+            requires_elevation=False,
+            multiple_specifiers="sometimes",
+        )

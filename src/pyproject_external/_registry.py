@@ -8,6 +8,7 @@ Python API to interact with central registry and associated mappings
 from __future__ import annotations
 
 import json
+import sys
 from collections import UserDict
 from dataclasses import dataclass
 from functools import cache
@@ -474,6 +475,10 @@ class CommandInstructions:
     def __post_init__(self):
         if len([arg for arg in self.command_template if arg == "{}"]) != 1:
             raise ValueError("'command_template' must include one (and one only) `'{}'` item.")
+        if self.multiple_specifiers not in ("always", "name-only", "never"):
+            raise ValueError(
+                "'multiple_specifiers' must be one of: 'always', 'name-only', 'never'"
+            )
 
     def render_template(self) -> list[str]:
         """
@@ -484,7 +489,10 @@ class CommandInstructions:
         template = []
         if self.requires_elevation:
             # TODO: Add a system to infer type of elevation required (sudo vs Windows AUC)
-            template.append("sudo")
+            if sys.platform.startswith("win"):
+                template.append("runas")
+            else:
+                template.append("sudo")
         template.extend(self.command_template)
         return template
 
