@@ -3,33 +3,8 @@
 import shutil
 import subprocess
 import sys
-from itertools import chain
 
 import pytest
-
-from pyproject_external import Mapping
-
-
-@pytest.fixture
-def mapping_instance():
-    # Create a minimal Mapping instance for testing the method
-    # The actual data doesn't matter much for _add_version_to_spec
-    return Mapping({"mappings": [], "package_managers": []})
-
-
-@pytest.mark.parametrize(
-    "dep_url,expected",
-    (
-        ("dep:generic/llvm@20", "llvm==20"),
-        ("dep:generic/llvm@>20", "llvm>20"),
-        ("dep:generic/llvm@<22,>=21", "llvm<22,>=21"),
-    ),
-)
-def test_build_command(dep_url, expected):
-    mapping: Mapping = Mapping.from_default("conda-forge")
-    mgr = mapping.get_package_manager("conda")
-    for specs in mapping.iter_specs_by_id(dep_url):
-        assert expected in chain(*[mgr.render_spec(spec) for spec in specs])
 
 
 @pytest.mark.skipif(not shutil.which("conda"), reason="conda not available")

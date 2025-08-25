@@ -8,7 +8,14 @@ import pytest
 import requests
 
 from pyproject_external import DepURL, Ecosystems, Mapping, Registry
-from pyproject_external._registry import Command, CommandInstructions, ValidationErrors, _Validated
+from pyproject_external._registry import (
+    Command,
+    CommandInstructions,
+    MappedSpec,
+    PackageManager,
+    ValidationErrors,
+    _Validated,
+)
 
 
 @cache
@@ -318,17 +325,26 @@ def test_mapping_iter_specs_by_id():
     assert specs[0].version == ">=2"
 
 
+@pytest.mark.parametrize(
+    "dep_url,expected",
+    (
+        ("dep:generic/arrow", "libarrow-all"),
+        ("dep:generic/arrow@20", "libarrow-all==20"),
+        ("dep:generic/arrow@>20", "libarrow-all>20"),
+        ("dep:generic/arrow@<22,>=21", "libarrow-all<22,>=21"),
+    ),
+)
 @pytest.mark.parametrize("command_type", ["install", "query"])
-def test_mapping_iter_commands(command_type):
+def test_mapping_iter_commands(dep_url, expected, command_type):
     mapping = small_conda_forge_mapping()
-    commands = next(mapping.iter_commands(command_type, "dep:generic/arrow", "conda"))
+    commands = next(mapping.iter_commands(command_type, dep_url, "conda"))
     assert isinstance(commands, list)
     assert len(commands) == 1
     if command_type == "install":
         assert commands[0].template == ["conda", "install", "{}"]
     elif command_type == "query":
         assert commands[0].template == ["conda", "list", "-f", "{}"]
-    assert commands[0].arguments == ["libarrow-all"]
+    assert commands[0].arguments == [expected]
 
 
 @pytest.mark.parametrize("depurl", ["dep:generic/multi-arrow", "dep:generic/multi-arrow@2"])
@@ -445,3 +461,107 @@ def test_command_instructions_wrong():
             requires_elevation=False,
             multiple_specifiers="sometimes",
         )
+
+
+_package_manager_pep440 = PackageManager.from_mapping_entry(
+    {
+        "name": "pkg",
+        "commands": {
+            "install": {
+                "command": [
+                    "pkg",
+                    "install",
+                    "{}",
+                ],
+                "multiple_specifiers": "always",
+            },
+            "query": {"command": ["pkg", "list", "{}"]},
+        },
+        "specifier_syntax": {
+            "exact_version": ["{name}==={version}"],
+            "name_only": ["{name}"],
+            "version_ranges": {
+                "and": ",",
+                "equal": "={version}",
+                "greater_than": ">{version}",
+                "greater_than_equal": ">={version}",
+                "less_than": "<{version}",
+                "less_than_equal": "<={version}",
+                "not_equal": "!={version}",
+                "syntax": ["{name}{ranges}"],
+            },
+        },
+    },
+)
+_package_manager_name_only = PackageManager.from_mapping_entry(
+    {
+        "name": "pkg",
+        "commands": {
+            "install": {
+                "command": [
+                    "pkg",
+                    "install",
+                    "{}",
+                ],
+                "multiple_specifiers": "name-only",
+            },
+            "query": {"command": ["pkg", "list", "{}"]},
+        },
+        "specifier_syntax": {
+            "exact_version": None,
+            "name_only": ["--spec", "{name}"],
+            "version_ranges": None,
+        },
+    },
+)
+_package_manager_exact_version_only = PackageManager.from_mapping_entry(
+    {
+        "name": "pkg",
+        "commands": {
+            "install": {
+                "command": [
+                    "pkg",
+                    "install",
+                    "{}",
+                ],
+                "multiple_specifiers": "always",
+            },
+            "query": {"command": ["pkg", "list", "{}"]},
+        },
+        "specifier_syntax": {
+            "exact_version": ["--spec", "{name}", "--version", "{version}"],
+            "name_only": ["--spec", "{name}"],
+            "version_ranges": None,
+        },
+    },
+)
+
+
+@pytest.mark.parametrize(
+    "mgr,name,version,expected",
+    (
+        (_package_manager_pep440, "libarrow-all", "", ["libarrow-all"]),
+        (_package_manager_pep440, "libarrow-all", "20", ["libarrow-all===20"]),
+        (_package_manager_pep440, "libarrow-all", ">20", ["libarrow-all>20"]),
+        (_package_manager_pep440, "libarrow-all", "<22,>=21", ["libarrow-all<22,>=21"]),
+        (_package_manager_name_only, "libarrow-all", "", ["--spec", "libarrow-all"]),
+        (_package_manager_name_only, "libarrow-all", "20", ValueError),
+        (_package_manager_name_only, "libarrow-all", ">20", ValueError),
+        (_package_manager_name_only, "libarrow-all", "<22,>=21", ValueError),
+        (_package_manager_exact_version_only, "libarrow-all", "", ["--spec", "libarrow-all"]),
+        (
+            _package_manager_exact_version_only,
+            "libarrow-all",
+            "20",
+            ["--spec", "libarrow-all", "--version", "20"],
+        ),
+        (_package_manager_exact_version_only, "libarrow-all", ">20", ValueError),
+        (_package_manager_exact_version_only, "libarrow-all", "<22,>=21", ValueError),
+    ),
+)
+def test_package_manager_render_spec(mgr, name, version, expected):
+    if expected is ValueError:
+        with pytest.raises(expected):
+            mgr.render_spec(MappedSpec(name, version))
+    else:
+        assert mgr.render_spec(MappedSpec(name, version)) == expected

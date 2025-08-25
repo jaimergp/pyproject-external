@@ -701,21 +701,21 @@ class PackageManager:
             version = spec.version
         constraints = version.split(",")
         if len(constraints) == 1 and (constraint := Specifier(constraints[0])).operator == "===":
-            if self.exact_version_syntax:
-                # exact version
-                return [
-                    item.format(name=spec.name, version=constraint.version)
-                    for item in self.exact_version_syntax
-                ]
-            # drop to name-only syntax
-            log.info(
-                "Exact versioning not supported, using name-only syntax for %s %s",
-                spec.name,
-                version,
-            )
-            return [arg.format(name=spec.name) for arg in self.name_only_syntax]
+            # exact version
+            if not self.exact_version_syntax:
+                raise ValueError(
+                    "This package manager does not support exact version constraints."
+                )
+            return [
+                item.format(name=spec.name, version=constraint.version)
+                for item in self.exact_version_syntax
+            ]
 
         # This is range-versions territory
+
+        if not self.version_ranges_syntax:
+            raise ValueError("This package manager does not support version range constraints.")
+
         mapped_constraints = []
         for constraint in constraints:
             constraint = Specifier(constraint)
