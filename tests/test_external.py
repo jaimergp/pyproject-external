@@ -89,7 +89,11 @@ def test_external_dependency_groups():
         categories=("dependency_groups",),
         package_manager="conda",
     ) == ["libarrow-all", "make", "ninja"]
-    assert ["libarrow-all", "make", "ninja", ] == ext.install_commands(
+    assert [
+        "libarrow-all",
+        "make",
+        "ninja",
+    ] == ext.install_commands(
         "conda-forge",
         package_manager="conda",
     )[0].arguments
