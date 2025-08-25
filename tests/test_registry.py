@@ -152,7 +152,7 @@ class _ValidationDefault(_Validated):
 
 
 def test_schema_validation_default_url():
-    with pytest.raises(ValidationErrors):
+    with pytest.raises(ValidationErrors, match="Validation error"):
         _ValidationDefault({}).validate()
     _ValidationDefault({"definitions": []}).validate()
 
@@ -171,13 +171,13 @@ def test_schema_validation_default_path(tmp_path):
         def __init__(self, data):
             self.data = data
 
-    with pytest.raises(ValidationErrors):
+    with pytest.raises(ValidationErrors, match="Validation error"):
         _ValidationDefaultPath({}).validate()
     _ValidationDefaultPath({"definitions": []}).validate()
 
 
 def test_schema_validation_with_schema_url():
-    with pytest.raises(ValidationErrors):
+    with pytest.raises(ValidationErrors, match="Validation error"):
         _ValidationDefault(
             {
                 "$schema": "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/"
@@ -200,7 +200,7 @@ def test_schema_validation_with_schema_path(tmp_path):
     )
     r.raise_for_status()
     (tmp_path / "schema.json").write_text(r.text)
-    with pytest.raises(ValidationErrors):
+    with pytest.raises(ValidationErrors, match="Validation error"):
         _ValidationDefault({"$schema": str(tmp_path / "schema.json")}).validate()
     _ValidationDefault({"$schema": str(tmp_path / "schema.json"), "definitions": []}).validate()
 
@@ -219,16 +219,16 @@ def test_registry_dep_urls_are_parsable(dep_url):
 
 
 @pytest.mark.parametrize(
-    "dep_url",
+    "dep_url,error",
     [
-        "pkg:generic/bad-scheme",
-        "absolutely-not-a-dep-urldep:virtual",
-        "dep:virtual/not-valid",
-        "dep:virtual/not-valid/name",
+        ("pkg:generic/bad-scheme", ""),
+        ("absolutely-not-a-dep-urldep:virtual", ""),
+        ("dep:virtual/not-valid", ""),
+        ("dep:virtual/not-valid/name", ""),
     ],
 )
-def test_registry_dep_urls_fail_validation(dep_url):
-    with pytest.raises(ValueError):
+def test_registry_dep_urls_fail_validation(dep_url, error):
+    with pytest.raises(ValueError, match=error):
         DepURL.from_string(dep_url)
 
 
@@ -253,7 +253,7 @@ def test_resolve_alias_arrow():
 def test_ecosystem_get_mapping():
     assert default_ecosystems().get_mapping("fedora")
     assert default_ecosystems().get_mapping("does-not-exist", None) is None
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="cannot be found"):
         default_ecosystems().get_mapping("does-not-exist")
 
 
@@ -386,11 +386,11 @@ def test_mapping_commands():
 
 
 def test_command_validation():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="template"):
         Command(["pkg", "install"], ["name"])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="template"):
         Command(["pkg", "install", "{}", "{}"], ["name"])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="template"):
         Command(["pkg", "install", "{}{}"], ["name"])
     # This one is ok
     Command(["pkg", "install", "{}"], ["name"])
@@ -433,13 +433,13 @@ def test_command_instructions_elevation():
 
 
 def test_command_instructions_wrong():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="command_template"):
         CommandInstructions(
             command_template=["pkg", "install"],
             requires_elevation=False,
             multiple_specifiers="always",
         )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="multiple_specifiers"):
         CommandInstructions(
             command_template=["pkg", "install", "{}"],
             requires_elevation=False,
