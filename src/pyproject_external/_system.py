@@ -1,5 +1,10 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2025 Quansight Labs
+
+"""
+Utilities to detect and interface with system properties.
+"""
+
 import json
 import logging
 import os

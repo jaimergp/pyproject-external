@@ -75,9 +75,11 @@ python = "3.13.*"
 
 [tool.pixi.feature.test.dependencies]
 pytest = "*"
+pytest-cov = "*"
 
 [tool.pixi.feature.test.tasks]
 test = "pytest"
+test-cov = "pytest --cov=pyproject_external --cov-report xml:cov.xml"
 
 [tool.pixi.environments]
 test-py310 = ["test", "py310"]
