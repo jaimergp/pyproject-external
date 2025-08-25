@@ -141,6 +141,45 @@ def test_ecosystem_get_mapping():
         default_ecosystems().get_mapping("does-not-exist")
 
 
+def test_registry_iter_unique_ids():
+    reg = default_registry()
+    assert sorted(reg.iter_unique_ids()) == sorted(dict.fromkeys(reg.iter_unique_ids()))
+
+
+def test_registry_iter_by_id():
+    reg = default_registry()
+    for item in reg.iter_by_id("dep:generic/arrow"):
+        assert item["id"] == "dep:generic/arrow"
+
+
+def test_registry_iter_canonical():
+    reg = default_registry()
+    for item in reg.iter_canonical():
+        assert (
+            item["id"].startswith("dep:virtual/")
+            or not item.get("provides")
+            or all(prov.startswith("dep:virtual/") for prov in item.get("provides"))
+        )
+
+
+def test_registry_iter_aliases():
+    reg = default_registry()
+    for item in reg.iter_aliases():
+        assert item["provides"]
+
+
+def test_registry_iter_generic():
+    reg = default_registry()
+    for item in reg.iter_generic():
+        assert item["id"].startswith("dep:generic/")
+
+
+def test_registry_iter_virtual():
+    reg = default_registry()
+    for item in reg.iter_virtual():
+        assert item["id"].startswith("dep:virtual/")
+
+
 def test_commands():
     mapping = Mapping.from_default("conda-forge")
     assert [
