@@ -4,9 +4,10 @@
 from functools import cache
 
 import pytest
-from packageurl import PackageURL
+import requests
 
-from pyproject_external import Ecosystems, Mapping, Registry
+from pyproject_external import DepURL, Ecosystems, Mapping, Registry
+from pyproject_external._registry import ValidationErrors, _Validated
 
 
 @cache
