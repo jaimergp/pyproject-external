@@ -27,6 +27,67 @@ def test_ecosystems():
     default_ecosystems().validate()
 
 
+class _ValidationDefault(_Validated):
+    default_schema = "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/main/schemas/central-registry.schema.json"
+
+    def __init__(self, data):
+        self.data = data
+
+
+def test_schema_validation_default_url():
+    with pytest.raises(ValidationErrors):
+        _ValidationDefault({}).validate()
+    _ValidationDefault({"definitions": []}).validate()
+
+
+def test_schema_validation_default_path(tmp_path):
+    r = requests.get(
+        "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/"
+        "main/schemas/central-registry.schema.json"
+    )
+    r.raise_for_status()
+    (tmp_path / "schema.json").write_text(r.text)
+
+    class _ValidationDefaultPath(_Validated):
+        default_schema = tmp_path / "schema.json"
+
+        def __init__(self, data):
+            self.data = data
+
+    with pytest.raises(ValidationErrors):
+        _ValidationDefaultPath({}).validate()
+    _ValidationDefaultPath({"definitions": []}).validate()
+
+
+def test_schema_validation_with_schema_url():
+    with pytest.raises(ValidationErrors):
+        _ValidationDefault(
+            {
+                "$schema": "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/"
+                "main/schemas/central-registry.schema.json"
+            }
+        ).validate()
+    _ValidationDefault(
+        {
+            "$schema": "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/"
+            "main/schemas/central-registry.schema.json",
+            "definitions": [],
+        }
+    ).validate()
+
+
+def test_schema_validation_with_schema_path(tmp_path):
+    r = requests.get(
+        "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/"
+        "main/schemas/central-registry.schema.json"
+    )
+    r.raise_for_status()
+    (tmp_path / "schema.json").write_text(r.text)
+    with pytest.raises(ValidationErrors):
+        _ValidationDefault({"$schema": str(tmp_path / "schema.json")}).validate()
+    _ValidationDefault({"$schema": str(tmp_path / "schema.json"), "definitions": []}).validate()
+
+
 @pytest.mark.parametrize("mapping", sorted(default_ecosystems().iter_names()))
 def test_mappings(mapping):
     Mapping.from_default(mapping).validate()
@@ -34,12 +95,24 @@ def test_mappings(mapping):
 
 @pytest.mark.parametrize(
     "dep_url",
-    list(dict.fromkeys([entry["id"] for entry in default_registry().iter_all()])),
+    sorted(default_registry().iter_unique_ids()),
 )
 def test_registry_dep_urls_are_parsable(dep_url):
-    if dep_url.startswith("dep:"):
-        pytest.skip("dep URLs use a different schema and aren't parsable (yet?)")
-    PackageURL.from_string(dep_url)
+    DepURL.from_string(dep_url)
+
+
+@pytest.mark.parametrize(
+    "dep_url",
+    [
+        "pkg:generic/bad-scheme",
+        "absolutely-not-a-dep-urldep:virtual",
+        "dep:virtual/not-valid",
+        "dep:virtual/not-valid/name",
+    ],
+)
+def test_registry_dep_urls_fail_validation(dep_url):
+    with pytest.raises(ValueError):
+        DepURL.from_string(dep_url)
 
 
 def test_resolve_virtual_gcc():
