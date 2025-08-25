@@ -45,11 +45,11 @@ class DepURL(PackageURL):
     ) -> Self:
         # Validate virtual types _before_ the namedtuple is created
         if type.lower() == "virtual":
-            namespace = namespace.lower()
-            if namespace not in ("compiler", "interface"):
+            if not namespace or namespace.lower() not in ("compiler", "interface"):
                 raise ValueError(
                     "'dep:virtual/*' only accepts 'compiler' or 'interface' as namespace."
                 )
+            namespace = namespace.lower()
             # names are normalized to lowercase
             name = name.lower()
 
