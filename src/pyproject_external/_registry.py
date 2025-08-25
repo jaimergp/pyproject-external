@@ -459,7 +459,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         """
         mgr = self.get_package_manager(package_manager)
         for specs in self.iter_specs_by_id(dep_url, specs_type, **kwargs):
-            yield mgr.get_commands(command_type, specs)
+            yield mgr.render_commands(command_type, specs)
 
 
 @dataclass
@@ -625,7 +625,7 @@ class PackageManager:
             version_ranges_not_equal=version_ranges.get("not_equal"),
         )
 
-    def get_commands(
+    def render_commands(
         self, command: Literal["install", "query"], specs: Iterable[MappedSpec]
     ) -> list[Command]:
         """

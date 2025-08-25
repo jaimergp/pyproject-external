@@ -493,6 +493,66 @@ _package_manager_pep440 = PackageManager.from_mapping_entry(
         },
     },
 )
+_package_manager_pep440_single_spec = PackageManager.from_mapping_entry(
+    {
+        "name": "pkg",
+        "commands": {
+            "install": {
+                "command": [
+                    "pkg",
+                    "install",
+                    "{}",
+                ],
+                "multiple_specifiers": "never",
+            },
+            "query": {"command": ["pkg", "list", "{}"]},
+        },
+        "specifier_syntax": {
+            "exact_version": ["{name}==={version}"],
+            "name_only": ["{name}"],
+            "version_ranges": {
+                "and": ",",
+                "equal": "={version}",
+                "greater_than": ">{version}",
+                "greater_than_equal": ">={version}",
+                "less_than": "<{version}",
+                "less_than_equal": "<={version}",
+                "not_equal": "!={version}",
+                "syntax": ["--spec", "{name}", "--version", "{ranges}"],
+            },
+        },
+    },
+)
+_package_manager_pep440_name_only = PackageManager.from_mapping_entry(
+    {
+        "name": "pkg",
+        "commands": {
+            "install": {
+                "command": [
+                    "pkg",
+                    "install",
+                    "{}",
+                ],
+                "multiple_specifiers": "name-only",
+            },
+            "query": {"command": ["pkg", "list", "{}"]},
+        },
+        "specifier_syntax": {
+            "exact_version": ["{name}==={version}"],
+            "name_only": ["{name}"],
+            "version_ranges": {
+                "and": ",",
+                "equal": "={version}",
+                "greater_than": ">{version}",
+                "greater_than_equal": ">={version}",
+                "less_than": "<{version}",
+                "less_than_equal": "<={version}",
+                "not_equal": "!={version}",
+                "syntax": ["--spec", "{name}", "--version", "{ranges}"],
+            },
+        },
+    },
+)
 _package_manager_name_only = PackageManager.from_mapping_entry(
     {
         "name": "pkg",
@@ -535,6 +595,27 @@ _package_manager_exact_version_only = PackageManager.from_mapping_entry(
         },
     },
 )
+_package_manager_names_only = PackageManager.from_mapping_entry(
+    {
+        "name": "pkg",
+        "commands": {
+            "install": {
+                "command": [
+                    "pkg",
+                    "install",
+                    "{}",
+                ],
+                "multiple_specifiers": "always",
+            },
+            "query": {"command": ["pkg", "list", "{}"]},
+        },
+        "specifier_syntax": {
+            "exact_version": None,
+            "name_only": ["--spec", "{name}"],
+            "version_ranges": None,
+        },
+    },
+)
 
 
 @pytest.mark.parametrize(
@@ -565,3 +646,86 @@ def test_package_manager_render_spec(mgr, name, version, expected):
             mgr.render_spec(MappedSpec(name, version))
     else:
         assert mgr.render_spec(MappedSpec(name, version)) == expected
+
+
+@pytest.mark.parametrize(
+    "mgr,specs,expected",
+    (
+        (
+            _package_manager_pep440_single_spec,
+            [MappedSpec("libarrow-all", "")],
+            [["pkg", "install", "libarrow-all"]],
+        ),
+        (
+            _package_manager_pep440,
+            [
+                MappedSpec("libarrow-all", ""),
+                MappedSpec("libarrow-all", ""),
+            ],
+            [["pkg", "install", "libarrow-all"]],  # deduplicated
+        ),
+        (
+            _package_manager_pep440_single_spec,
+            [
+                MappedSpec("libarrow-all", ""),
+                MappedSpec("libarrow-all", ""),
+            ],
+            [["pkg", "install", "libarrow-all"]],  # deduplicated
+        ),
+        (
+            _package_manager_pep440,
+            [MappedSpec("libarrow-all", "20"), MappedSpec("make", "")],
+            [["pkg", "install", "libarrow-all===20", "make"]],
+        ),
+        (
+            _package_manager_exact_version_only,
+            [MappedSpec("libarrow-all", "20"), MappedSpec("make", "")],
+            [["pkg", "install", "--spec", "libarrow-all", "--version", "20", "--spec", "make"]],
+        ),
+        (
+            _package_manager_exact_version_only,
+            [MappedSpec("libarrow-all", ">20"), MappedSpec("make", "")],
+            ValueError,
+        ),
+        (
+            _package_manager_pep440_single_spec,
+            [
+                MappedSpec("libarrow-all", ">20"),
+                MappedSpec("make", ""),
+                MappedSpec("cat", ""),
+            ],
+            [
+                ["pkg", "install", "--spec", "libarrow-all", "--version", ">20"],
+                ["pkg", "install", "make"],
+                ["pkg", "install", "cat"],
+            ],
+        ),
+        (
+            _package_manager_pep440_name_only,
+            [
+                MappedSpec("libarrow-all", "<22,>=21"),
+                MappedSpec("make", ""),
+                MappedSpec("cat", ""),
+            ],
+            [
+                ["pkg", "install", "make", "cat"],
+                ["pkg", "install", "--spec", "libarrow-all", "--version", "<22,>=21"],
+            ],
+        ),
+        (
+            _package_manager_names_only,
+            [
+                MappedSpec("libarrow-all", "<22,>=21"),
+                MappedSpec("make", ""),
+                MappedSpec("cat", ""),
+            ],
+            ValueError,
+        ),
+    ),
+)
+def test_package_manager_render_commands(mgr, specs, expected):
+    if expected is ValueError:
+        with pytest.raises(expected):
+            mgr.render_commands("install", specs)
+    else:
+        assert [command.render() for command in mgr.render_commands("install", specs)] == expected

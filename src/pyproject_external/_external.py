@@ -424,7 +424,7 @@ class External:
             mapped_specs.extend(python_specs)
         mgr = mapping.get_package_manager(package_manager)
         if return_type in ("install_commands", "query_commands"):
-            return mgr.get_commands(return_type.split("_")[0], mapped_specs)
+            return mgr.render_commands(return_type.split("_")[0], mapped_specs)
         if return_type == "versioned_specs":
             return list(chain(*(mgr.render_spec(spec) for spec in mapped_specs)))
         # return_type == "names"
