@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2025 Quansight Labs
 
 """
-Parse dep: dependencies
+Parse DepURLs (`dep:` strings)
 """
 
 from __future__ import annotations

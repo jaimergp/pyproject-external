@@ -1,5 +1,10 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2025 Quansight Labs
+
+"""
+Constants used throughout the codebase. All variables need to be typed as `Final`.
+"""
+
 from typing import Final
 
 APP_NAME: Final[str] = "pyproject-external"

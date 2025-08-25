@@ -1,5 +1,10 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2025 Quansight Labs
+
+"""
+User configuration utilities.
+"""
+
 from __future__ import annotations
 
 import os

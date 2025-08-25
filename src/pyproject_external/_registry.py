@@ -16,6 +16,11 @@ from logging import getLogger
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+try:
+    ExceptionGroup
+except NameError:
+    from exceptiongroup import ExceptionGroup
+
 import requests
 from jsonschema import Draft202012Validator, validators
 from packaging.specifiers import Specifier
@@ -45,6 +50,10 @@ if TYPE_CHECKING:
 
 
 log = getLogger(__name__)
+
+
+class ValidationErrors(ExceptionGroup):
+    pass
 
 
 class _Validated:
@@ -80,8 +89,7 @@ class _Validated:
         schema_definition = self.data.get("$schema") or None
         errors = list(self._validator_inst(schema_definition).iter_errors(self.data))
         if errors:
-            msg = "\n".join(errors)
-            raise ValueError(f"Validation error: {msg}")
+            raise ValidationErrors("Validation error", errors)
 
 
 class _FromPathOrUrlOrDefault:
@@ -270,19 +278,6 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
 
     default_schema: str = DEFAULT_MAPPING_SCHEMA_URL
     default_source: str = DEFAULT_MAPPING_URL_TEMPLATE
-    default_specifier_templates = {
-        "name_only": "{name}",
-        "exact_version": "{name}==={version}",
-        "and": ",",
-        "equal": "{name}=={version}",
-        "greater_than": "{name}>{version}",
-        "greater_than_equal": "{name}>={version}",
-        "less_than": "{name}<{version}",
-        "less_than_equal": "{name}<={version}",
-        "not_equal": "{name}!={version}",
-    }
-    default_install_command_multiple_specifiers: Literal["always", "name-only", "never"] = "always"
-    default_requires_elevation: bool = False
 
     @property
     def name(self) -> str | None:

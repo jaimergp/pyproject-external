@@ -1,3 +1,10 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2025 Quansight Labs
+
+"""
+High-level API to handle `[external]` metadata tables.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -400,7 +407,6 @@ class External:
                     ecosystem,
                     dep_str,
                     specs_type,
-                    package_manager,
                     required,
                 ):
                     mapped_specs.extend(specs)
@@ -412,7 +418,6 @@ class External:
                 ecosystem,
                 "dep:generic/python",
                 "build",
-                package_manager,
                 required=True,
             )
         ):
@@ -432,7 +437,6 @@ class External:
         ecosystem: str,
         dep_str: str,
         specs_type: str,
-        package_manager: str,
         required: bool,
     ) -> list[MappedSpec]:
         for specs in mapping.iter_specs_by_id(
