@@ -273,9 +273,6 @@ def test_commands():
     assert [
         "conda",
         "install",
-        "--yes",
-        "--channel=conda-forge",
-        "--strict-channel-priority",
         "make",
     ] in [
         command.render()
