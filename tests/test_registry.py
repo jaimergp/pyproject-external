@@ -11,13 +11,66 @@ from pyproject_external._registry import ValidationErrors, _Validated
 
 
 @cache
-def default_registry():
+def default_registry() -> Registry:
     return Registry.from_default()
 
 
 @cache
-def default_ecosystems():
+def default_ecosystems() -> Ecosystems:
     return Ecosystems.from_default()
+
+
+@cache
+def small_conda_forge_mapping() -> Mapping:
+    return Mapping(
+        {
+            "name": "conda-forge",
+            "mappings": [
+                {
+                    "id": "dep:generic/arrow",
+                    "description": "C++ libraries for Apache Arrow",
+                    "specs": "libarrow-all",
+                    "urls": {"feedstock": "https://github.com/conda-forge/arrow-cpp-feedstock"},
+                },
+                {
+                    "id": "dep:generic/make",
+                    "description": "GNU Make",
+                    "specs": "make",
+                    "urls": {"feedstock": "https://github.com/conda-forge/make-feedstock"},
+                },
+            ],
+            "package_managers": [
+                {
+                    "name": "conda",
+                    "commands": {
+                        "install": {
+                            "command": [
+                                "conda",
+                                "install",
+                                "{}",
+                            ],
+                            "multiple_specifiers": "always",
+                        },
+                        "query": {"command": ["conda", "list", "-f", "{}"]},
+                    },
+                    "specifier_syntax": {
+                        "exact_version": ["{name}=={version}"],
+                        "name_only": ["{name}"],
+                        "version_ranges": {
+                            "and": ",",
+                            "equal": "={version}",
+                            "greater_than": ">{version}",
+                            "greater_than_equal": ">={version}",
+                            "less_than": "<{version}",
+                            "less_than_equal": "<={version}",
+                            "not_equal": "!={version}",
+                            "syntax": ["{name}{ranges}"],
+                        },
+                    },
+                }
+            ],
+        }
+    )
 
 
 def test_registry():
@@ -180,8 +233,43 @@ def test_registry_iter_virtual():
         assert item["id"].startswith("dep:virtual/")
 
 
+def test_mapping_iter_by_id():
+    mapping = small_conda_forge_mapping()
+    entry = next(mapping.iter_by_id("dep:generic/arrow"))
+    assert isinstance(entry, dict)
+    assert entry["id"] == "dep:generic/arrow"
+
+
+def test_mapping_iter_specs_by_id():
+    mapping = small_conda_forge_mapping()
+    specs = next(mapping.iter_specs_by_id("dep:generic/arrow"))
+    assert isinstance(specs, list)
+    assert len(specs) == 1
+    assert specs[0].name == "libarrow-all"
+    assert specs[0].version == ""
+
+    specs = next(mapping.iter_specs_by_id("dep:generic/arrow@>=2"))
+    assert isinstance(specs, list)
+    assert len(specs) == 1
+    assert specs[0].name == "libarrow-all"
+    assert specs[0].version == ">=2"
+
+
+@pytest.mark.parametrize("command_type", ["install", "query"])
+def test_mapping_iter_commands(command_type):
+    mapping = small_conda_forge_mapping()
+    commands = next(mapping.iter_commands(command_type, "dep:generic/arrow", "conda"))
+    assert isinstance(commands, list)
+    assert len(commands) == 1
+    if command_type == "install":
+        assert commands[0].template == ["conda", "install", "{}"]
+    elif command_type == "query":
+        assert commands[0].template == ["conda", "list", "-f", "{}"]
+    assert commands[0].arguments == ["libarrow-all"]
+
+
 def test_commands():
-    mapping = Mapping.from_default("conda-forge")
+    mapping = small_conda_forge_mapping()
     assert [
         "conda",
         "install",

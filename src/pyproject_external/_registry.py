@@ -330,6 +330,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         :param resolve_with_registry: Process `provides` aliases with a `Registry` instance.
         :yields: Mapping entries as dictionaries.
         """
+        # TODO: Deal with qualifiers?
         key = key.split("@", 1)[0]  # remove version components
         keys = {key}
         if resolve_with_registry is not None:
