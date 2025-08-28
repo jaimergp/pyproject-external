@@ -759,11 +759,16 @@ class PackageManager:
         return result
 
     def _validate_specifier(self, name: str, specifier: Specifier) -> None:
-        not_supported = ("~=", "===")
+        not_supported = ("~=", "===", "!=")
         if specifier.operator in not_supported:
             raise ValueError(
-                f"Package {name} has invalid operator {specifier.operator} "
-                f"in constraint {specifier}"
+                f"Package '{name}' has invalid operator '{specifier.operator}' "
+                f"in constraint '{specifier}'."
+            )
+        if "*" in specifier.version:
+            raise ValueError(
+                f"Package '{name}' has invalid operator '*' "
+                f"in constraint '{specifier}'."
             )
 
 
