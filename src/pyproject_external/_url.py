@@ -7,10 +7,12 @@ Parse dep: dependencies
 
 from __future__ import annotations
 
+from logging import getLogger
 from typing import TYPE_CHECKING
 from urllib.parse import unquote
 
 from packageurl import PackageURL
+from packaging.markers import InvalidMarker, Marker
 
 if TYPE_CHECKING:
     from typing import AnyStr, ClassVar
@@ -20,6 +22,7 @@ if TYPE_CHECKING:
     except ImportError:
         from typing_extensions import Self
 
+log = getLogger(__name__)
 
 class DepURL(PackageURL):
     SCHEME: ClassVar[str] = "dep"
@@ -53,6 +56,24 @@ class DepURL(PackageURL):
             subpath=subpath,
         )
 
+    @classmethod
+    def from_string(cls, value: str) -> Self:
+        if ";" in value:
+            depurl, marker = value.rsplit(";", 1)
+            try:
+                marker = Marker(marker)
+            except InvalidMarker:
+                log.warning("Invalid marker detected %s. Parsing whole string as a DepURL.", marker)
+                depurl = value
+                marker = None
+        else:
+            depurl = value
+            marker = None
+        parsed = super().from_string(depurl)
+        if marker is not None:
+            parsed.qualifiers["environment_marker"] = marker
+        return parsed
+
     def to_string(self) -> str:
         # Parent class forces quoting on qualifiers and some others, we don't want that.
         return unquote(super().to_string())
@@ -83,3 +104,12 @@ class DepURL(PackageURL):
         if self.version:
             result += f" ({self._version_as_vers()})"
         return result
+
+    def evaluate_environment_marker(self) -> bool:
+        if self.environment_marker is not None:
+            return self.environment_marker.evaluate()
+        return True
+
+    @property
+    def environment_marker(self) -> Marker | None:
+        return self.qualifiers.get("environment_marker")
