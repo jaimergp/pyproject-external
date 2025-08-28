@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2023 Quansight Labs
+
 """
 Utilities to patch sdist tarballs to include `[external]` metadata.
 """
