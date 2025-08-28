@@ -170,7 +170,7 @@ def test_external_with_environment_markers_pass():
     assert ext.to_dict() == {
         "external": {
             "build_requires": [
-                'dep:virtual/compiler/c; os_name == "posix"',
+                f'dep:virtual/compiler/c; os_name == "{os.name}"',
             ],
         },
     }
