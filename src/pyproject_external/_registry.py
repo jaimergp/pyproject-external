@@ -767,8 +767,7 @@ class PackageManager:
             )
         if "*" in specifier.version:
             raise ValueError(
-                f"Package '{name}' has invalid operator '*' "
-                f"in constraint '{specifier}'."
+                f"Package '{name}' has invalid operator '*' in constraint '{specifier}'."
             )
 
 
