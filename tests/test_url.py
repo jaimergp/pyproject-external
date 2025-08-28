@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2025 Quansight Labs
+import sys
+
+from packaging.markers import Marker
 
 from pyproject_external import DepURL
 
@@ -12,6 +15,17 @@ def test_parse():
     assert dep.type == "pypi"
     assert dep.name == "requests"
     assert dep.version == ">=2.0"
+
+
+def test_parse_with_environment_marker():
+    dep = DepURL.from_string(
+        "dep:pypi/requests@>=2.0; python_version == "
+        f"'{sys.version_info.major}.{sys.version_info.minor}'"
+    )
+    assert dep.environment_marker == Marker(
+        f"python_version == '{sys.version_info.major}.{sys.version_info.minor}'"
+    )
+    assert dep.evaluate_environment_marker()
 
 
 def test_export():
