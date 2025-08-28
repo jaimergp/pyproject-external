@@ -62,7 +62,7 @@ class DepURL(PackageURL):
         if ";" in value:
             depurl, marker = value.rsplit(";", 1)
             try:
-                marker = Marker(marker)
+                Marker(marker)  # just check if it's parsable, we store it as string
             except InvalidMarker:
                 log.warning(
                     "Invalid marker detected %s. Parsing whole string as a DepURL.", marker
@@ -116,10 +116,12 @@ class DepURL(PackageURL):
         return result
 
     def evaluate_environment_marker(self) -> bool:
-        if self.environment_marker is not None:
-            return self.environment_marker.evaluate()
+        if (marker := self.environment_marker) is not None:
+            return marker.evaluate()
         return True
 
     @property
     def environment_marker(self) -> Marker | None:
-        return self.qualifiers.get("environment_marker")
+        if marker := self.qualifiers.get("environment_marker"):
+            return Marker(marker)
+        return None
