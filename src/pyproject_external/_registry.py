@@ -37,7 +37,7 @@ from ._constants import (
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Any, Literal, TypeVar
+    from typing import Any, ClassVar, Literal, TypeVar
 
     try:
         from typing import Self
@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 
     _DefaultType = TypeVar("_DefaultType")
     TBuildHostRun = Literal["build", "host", "run"]
-
+    TMultipleSpecifiers = Literal["always", "name-only", "never"]
 
 log = getLogger(__name__)
 
@@ -470,7 +470,7 @@ class CommandInstructions:
 
     command_template: list[str]
     requires_elevation: bool
-    multiple_specifiers: Literal["always", "name-only", "never"]
+    multiple_specifiers: TMultipleSpecifiers
 
     def __post_init__(self):
         if len([arg for arg in self.command_template if arg == "{}"]) != 1:
@@ -590,6 +590,10 @@ class PackageManager:
     version_ranges_less_than_equal: str | None
     version_ranges_not_equal: str | None
 
+    default_multiple_specifiers_install: ClassVar[TMultipleSpecifiers] = "always"
+    default_multiple_specifiers_query: ClassVar[TMultipleSpecifiers] = "never"
+    default_requires_elevation: ClassVar[bool] = False
+
     @classmethod
     def from_mapping_entry(cls, entry: dict[str, Any]) -> Self:
         """
@@ -604,14 +608,24 @@ class PackageManager:
             install=CommandInstructions(
                 command_template=entry["commands"]["install"]["command"],
                 multiple_specifiers=entry["commands"]["install"].get(
-                    "multiple_specifiers", "always"
+                    "multiple_specifiers",
+                    cls.default_multiple_specifiers_install,
                 ),
-                requires_elevation=entry["commands"]["install"].get("requires_elevation", False),
+                requires_elevation=entry["commands"]["install"].get(
+                    "requires_elevation",
+                    cls.default_requires_elevation,
+                ),
             ),
             query=CommandInstructions(
                 command_template=entry["commands"]["query"]["command"],
-                multiple_specifiers=entry["commands"]["query"].get("multiple_specifiers", "never"),
-                requires_elevation=entry["commands"]["query"].get("requires_elevation", False),
+                multiple_specifiers=entry["commands"]["query"].get(
+                    "multiple_specifiers",
+                    cls.default_multiple_specifiers_query,
+                ),
+                requires_elevation=entry["commands"]["query"].get(
+                    "requires_elevation",
+                    cls.default_requires_elevation,
+                ),
             ),
             name_only_syntax=entry["specifier_syntax"]["name_only"],
             exact_version_syntax=entry["specifier_syntax"]["exact_version"],
