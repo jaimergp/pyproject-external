@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 log = getLogger(__name__)
 
+
 class DepURL(PackageURL):
     SCHEME: ClassVar[str] = "dep"
 
@@ -63,7 +64,9 @@ class DepURL(PackageURL):
             try:
                 marker = Marker(marker)
             except InvalidMarker:
-                log.warning("Invalid marker detected %s. Parsing whole string as a DepURL.", marker)
+                log.warning(
+                    "Invalid marker detected %s. Parsing whole string as a DepURL.", marker
+                )
                 depurl = value
                 marker = None
         else:
