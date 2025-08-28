@@ -77,9 +77,16 @@ class DepURL(PackageURL):
             parsed.qualifiers["environment_marker"] = marker
         return parsed
 
-    def to_string(self) -> str:
+    def to_string(self, drop_environment_marker: bool = True) -> str:
+        components = self._asdict()
+        # We don't want to export the environment marker
+        components["qualifiers"] = components.get("qualifiers", {}).copy()
+        components.get("qualifiers", {}).pop("environment_marker", None)
         # Parent class forces quoting on qualifiers and some others, we don't want that.
-        return unquote(super().to_string())
+        as_string = f"dep:{unquote(PackageURL(**components).to_string())[4:]}"
+        if not drop_environment_marker and self.environment_marker:
+            return f"{as_string}; {self.environment_marker}"
+        return as_string
 
     def _version_as_vers(self) -> str:
         if set(self.version).intersection("<>=!~*"):
