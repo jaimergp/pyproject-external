@@ -1,3 +1,4 @@
+import os
 from textwrap import dedent
 
 try:
@@ -156,3 +157,47 @@ def test_informative_error_message_optional(caplog):
     ext = External.from_pyproject_data(tomllib.loads(toml))
     ext.map_dependencies("fedora", package_manager="dnf")
     assert "Is this dependency in the right category?" in caplog.text
+
+
+def test_external_with_environment_markers_pass():
+    toml = dedent(
+        f"""
+        [external]
+        build-requires = ['dep:virtual/compiler/c; os_name == "{os.name}"']
+        """
+    )
+    ext = External.from_pyproject_data(tomllib.loads(toml))
+    assert ext.to_dict() == {
+        "external": {
+            "build_requires": [
+                'dep:virtual/compiler/c; os_name == "posix"',
+            ],
+        },
+    }
+    assert len(ext.build_requires) == 1
+    assert ext.build_requires[0] == DepURL.from_string(
+        f'dep:virtual/compiler/c; os_name == "{os.name}"'
+    )
+    assert ext.map_dependencies(
+        "conda-forge",
+        key="build_requires",
+        package_manager="conda",
+    ) == ["c-compiler", "python"]
+
+
+def test_external_with_environment_markers_fail():
+    toml = dedent(
+        f"""
+        [external]
+        build-requires = ['dep:virtual/compiler/c; os_name != "{os.name}"']
+        """
+    )
+    ext = External.from_pyproject_data(tomllib.loads(toml))
+    assert (
+        ext.map_dependencies(
+            "conda-forge",
+            key="build_requires",
+            package_manager="conda",
+        )
+        == []
+    )
