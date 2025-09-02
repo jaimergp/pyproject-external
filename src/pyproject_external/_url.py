@@ -7,10 +7,12 @@ Parse DepURLs (`dep:` strings)
 
 from __future__ import annotations
 
+from logging import getLogger
 from typing import TYPE_CHECKING
 from urllib.parse import unquote
 
 from packageurl import PackageURL
+from packaging.markers import InvalidMarker, Marker
 
 if TYPE_CHECKING:
     from typing import AnyStr, ClassVar
@@ -19,6 +21,8 @@ if TYPE_CHECKING:
         from typing import Self
     except ImportError:
         from typing_extensions import Self
+
+log = getLogger(__name__)
 
 
 class DepURL(PackageURL):
@@ -63,12 +67,44 @@ class DepURL(PackageURL):
             subpath=subpath,
         )
 
-    def to_string(self) -> str:
+    @classmethod
+    def from_string(cls, value: str) -> Self:
+        """
+        Generate a DepURL object from a string, optionally containing an environment marker.
+
+        If present, the environment marker will be moved to an `environment_marker` qualifier.
+        """
+        if ";" in value:
+            depurl, marker = value.rsplit(";", 1)
+            try:
+                Marker(marker)  # just check if it's parsable, we store it as string
+            except InvalidMarker:
+                log.warning(
+                    "Invalid marker detected %s. Parsing whole string as a DepURL.", marker
+                )
+                depurl = value
+                marker = None
+        else:
+            depurl = value
+            marker = None
+        parsed = super().from_string(depurl)
+        if marker is not None:
+            parsed.qualifiers["environment_marker"] = marker
+        return parsed
+
+    def to_string(self, drop_environment_marker: bool = True) -> str:
         """
         Generate a string, with no %-encoding.
         """
+        components = self._asdict()
+        # We don't want to export the environment marker
+        components["qualifiers"] = components.get("qualifiers", {}).copy()
+        components.get("qualifiers", {}).pop("environment_marker", None)
         # Parent class forces quoting on qualifiers and some others, we don't want that.
-        return unquote(super().to_string())
+        as_string = f"dep:{unquote(PackageURL(**components).to_string())[4:]}"
+        if not drop_environment_marker and self.environment_marker:
+            return f"{as_string}; {self.environment_marker}"
+        return as_string
 
     def _version_as_vers(self) -> str:
         if set(self.version).intersection("<>=!~*"):
@@ -105,3 +141,14 @@ class DepURL(PackageURL):
         if self.version:
             result += f" ({self._version_as_vers()})"
         return result
+
+    def evaluate_environment_marker(self) -> bool:
+        if (marker := self.environment_marker) is not None:
+            return marker.evaluate()
+        return True
+
+    @property
+    def environment_marker(self) -> Marker | None:
+        if marker := self.qualifiers.get("environment_marker"):
+            return Marker(marker)
+        return None

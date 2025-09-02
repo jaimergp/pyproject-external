@@ -211,7 +211,7 @@ class External:
                             package_manager=package_manager,
                         )
                     else:
-                        urls = [url.to_string() for url in urls]
+                        urls = [url.to_string(drop_environment_marker=False) for url in urls]
                     new_value[group_name] = urls
                 value = new_value
             else:
@@ -222,7 +222,7 @@ class External:
                         package_manager=package_manager,
                     )
                 else:
-                    value = [url.to_string() for url in value]
+                    value = [url.to_string(drop_environment_marker=False) for url in value]
             result[name] = value
         return {"external": result}
 
@@ -394,6 +394,12 @@ class External:
             for _, dep in category_iterator:
                 dep: DepURL
                 dep_str = dep.to_string()
+                if not dep.evaluate_environment_marker():
+                    log.info(
+                        "Skipping %s because its environment marker e",
+                        dep.to_string(drop_environment_marker=False),
+                    )
+                    continue
                 if specs_type == "build" and dep_str in (
                     "dep:virtual/compiler/c",
                     "dep:virtual/compiler/c++",
