@@ -27,10 +27,8 @@ def test_run_command_show(tmp_path):
     )
 
 
-@pytest.fixture(scope="session")
-def prepared_cryptography(tmp_path_factory) -> Path:
-    tmp = tmp_path_factory.mktemp("pyproject-external-prepare")
-    (tmp / "cryptography.toml").write_text(
+def _prepare_cryptography(tmpdir, version="") -> Path:
+    (tmpdir / "cryptography.toml").write_text(
         dedent(
             """
             [external]
@@ -48,11 +46,21 @@ def prepared_cryptography(tmp_path_factory) -> Path:
     )
     prepare(
         "cryptography",
-        version="45.0.7",
-        external_metadata_dir=tmp,
-        out_dir=tmp,
+        version=version,
+        external_metadata_dir=tmpdir,
+        out_dir=tmpdir,
     )
-    return next(tmp.glob("*.tar.gz"))
+    return next(tmpdir.glob("*.tar.gz"))
+
+
+@pytest.fixture(scope="session")
+def prepared_cryptography(tmp_path_factory) -> Path:
+    tmp = tmp_path_factory.mktemp("pyproject-external-prepare")
+    return _prepare_cryptography(tmp, "45.0.7")
+
+
+def test_prepare(tmp_path) -> Path:
+    assert _prepare_cryptography(tmp_path, "")
 
 
 def test_show(prepared_cryptography):
