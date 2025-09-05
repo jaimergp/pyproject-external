@@ -47,4 +47,4 @@ jobs:
       - name: Ensure package is installed
         run: pixi reinstall --environment ${{ env.PIXI_ENV_NAME }} pyproject-external
       - name: Run tests
-        run: pixi run --environment ${{ env.PIXI_ENV_NAME }} test
+        run: pixi run --environment ${{ env.PIXI_ENV_NAME }} test -v
