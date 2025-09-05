@@ -260,14 +260,37 @@ class External:
             "dependency_groups",
         ],
         group_name: str | None = None,
-    ) -> Iterable[tuple[str, DepURL]]:
+    ) -> Iterable[DepURL]:
         """
         Iterate over all the non-required DepURLs, optionally filtering by category and group.
 
         :param categories: Which categories to iterate over. If not provided,
             all categories will be included.
         :param group_name: Which group name to include from each category. If not provided,
-            all gorups will be included.
+            all groups will be included.
+        :yields: `DepURL` objects.
+        """
+        for _, dep_url in self.iter_optional_with_group_names(*categories, group_name=group_name):
+            yield dep_url
+
+    def iter_optional_with_group_names(
+        self,
+        *categories: Literal[
+            "optional_build_requires",
+            "optional_host_requires",
+            "optional_dependencies",
+            "dependency_groups",
+        ],
+        group_name: str | None = None,
+    ) -> Iterable[tuple[str, DepURL]]:
+        """
+        Iterate over all the non-required DepURLs, optionally filtering by category and group.
+        This version returns the group name the DepURL belongs to, along with the DepURL.
+
+        :param categories: Which categories to iterate over. If not provided,
+            all categories will be included.
+        :param group_name: Which group name to include from each category. If not provided,
+            all groups will be included.
         :yields: Tuples of group name and its `DepURL` objects.
         """
         if not categories:
@@ -296,11 +319,15 @@ class External:
         :warns: Whether one or more DepURLs are not part of the central registry or canonical.
         """
         exceptions = []
+        seen = set()
         for url in chain(self.iter(), self.iter_optional()):
+            if url in seen:
+                continue
             try:
                 self._validate_url(url, canonical=canonical, raises=raises)
             except ValueError as exc:
                 exceptions.append(exc)
+            seen.add(url)
         if exceptions:
             raise ExceptionGroup("Validation errors", exceptions)
 
@@ -397,7 +424,9 @@ class External:
             if required:
                 category_iterator = ((None, dep) for dep in self.iter(category))
             else:
-                category_iterator = self.iter_optional(category, group_name=group_name)
+                category_iterator = self.iter_optional_with_group_names(
+                    category, group_name=group_name
+                )
             for _, dep in category_iterator:
                 dep: DepURL
                 dep_str = dep.to_string()
