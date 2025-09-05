@@ -18,11 +18,6 @@ from logging import getLogger
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-try:
-    ExceptionGroup
-except NameError:
-    from exceptiongroup import ExceptionGroup
-
 import requests
 from jsonschema import Draft202012Validator, validators
 from packaging.specifiers import Specifier
@@ -34,6 +29,12 @@ from ._constants import (
     DEFAULT_MAPPING_URL_TEMPLATE,
     DEFAULT_REGISTRY_SCHEMA_URL,
     DEFAULT_REGISTRY_URL,
+)
+from ._exceptions import (
+    ExactVersionNotSupportedError,
+    ValidationErrors,
+    VersionConstraintNotSupportedError,
+    VersionRangesNotSupportedError,
 )
 
 if TYPE_CHECKING:
@@ -52,10 +53,6 @@ if TYPE_CHECKING:
     TMultipleSpecifiers = Literal["always", "name-only", "never"]
 
 log = getLogger(__name__)
-
-
-class ValidationErrors(ExceptionGroup):
-    pass
 
 
 class _Validated:
@@ -730,7 +727,7 @@ class PackageManager:
         if len(constraints) == 1 and (constraint := Specifier(constraints[0])).operator == "===":
             # exact version
             if not self.exact_version_syntax:
-                raise ValueError(
+                raise ExactVersionNotSupportedError(
                     "This package manager does not support exact version constraints. "
                     f"Spec name '{spec.name}' and version '{spec.version}'."
                 )
@@ -742,7 +739,7 @@ class PackageManager:
         # This is range-versions territory
 
         if not self.version_ranges_syntax:
-            raise ValueError(
+            raise VersionRangesNotSupportedError(
                 "This package manager does not support version range constraints. "
                 f"Spec name '{spec.name}' and version '{spec.version}'."
             )
@@ -755,7 +752,9 @@ class PackageManager:
                 self, f"version_ranges_{constraint._operators[constraint.operator]}"
             )
             if constraint_template is None:
-                raise ValueError(f"Constraint '{constraint}' in '{spec.name}' is not supported.")
+                raise VersionConstraintNotSupportedError(
+                    f"Constraint '{constraint}' in '{spec.name}' is not supported."
+                )
             mapped_constraint = constraint_template.format(
                 name=spec.name, version=constraint.version
             )
@@ -774,12 +773,12 @@ class PackageManager:
     def _validate_specifier(self, name: str, specifier: Specifier) -> None:
         not_supported = ("~=", "===", "!=")
         if specifier.operator in not_supported:
-            raise ValueError(
+            raise VersionConstraintNotSupportedError(
                 f"Package '{name}' has invalid operator '{specifier.operator}' "
                 f"in constraint '{specifier}'."
             )
         if "*" in specifier.version:
-            raise ValueError(
+            raise VersionConstraintNotSupportedError(
                 f"Package '{name}' has invalid operator '*' in constraint '{specifier}'."
             )
 

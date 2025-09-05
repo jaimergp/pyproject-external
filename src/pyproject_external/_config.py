@@ -25,11 +25,11 @@ if TYPE_CHECKING:
 
 from platformdirs import user_config_dir
 
-from ._constants import APP_AUTHOR, APP_CONFIG_FILENAME, APP_NAME
+from ._constants import APP_AUTHOR, APP_CONFIG_FILENAME, APP_NAME, UnsupportedConstraintsBehaviour
 
 
 def _get_config_directory() -> Path:
-    if pyproject_external_config := os.environ.get("PYPROJECT_EXTERNAL_CONFIG"):
+    if pyproject_external_config := os.environ.get("PYPROJECT_EXTERNAL_CONFIG_DIR"):
         return Path(pyproject_external_config)
     return Path(user_config_dir(appname=APP_NAME, appauthor=APP_AUTHOR))
 
@@ -38,18 +38,40 @@ def _get_config_file() -> Path:
     return _get_config_directory() / APP_CONFIG_FILENAME
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(kw_only=True)
 class Config:
     """
     User configuration for the `-m pyproject_external` CLI.
     """
 
     #: Which package manager to use by default on this system, instead of autodetected.
-    preferred_package_manager: str | None = None
+    preferred_package_manager: str = ""
+    unsupported_constraints_behaviour: UnsupportedConstraintsBehaviour = (
+        UnsupportedConstraintsBehaviour.WARN
+    )
+
+    def __post_init__(self):
+        if not isinstance(self.preferred_package_manager, str):
+            raise ValueError(
+                "'preferred_package_manager' must be str, but found "
+                f"{self.preferred_package_manager}."
+            )
+        try:
+            self.unsupported_constraints_behaviour = UnsupportedConstraintsBehaviour(
+                self.unsupported_constraints_behaviour
+            )
+        except ValueError as exc:
+            raise ValueError(
+                "'unsupported_constraints_behaviour' must be one of "
+                f"{[value.value for value in UnsupportedConstraintsBehaviour]}."
+            ) from exc
 
     @classmethod
     def load_user_config(cls) -> Self:
         config_file = _get_config_file()
         if config_file.is_file():
-            return cls(**tomllib.loads(_get_config_file().read_text()))
+            try:
+                return cls(**tomllib.loads(_get_config_file().read_text()))
+            except ValueError as exc:
+                raise ValueError(f"Config file '{config_file}' has errors: {exc}") from exc
         return cls()
