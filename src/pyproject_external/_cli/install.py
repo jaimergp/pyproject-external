@@ -58,7 +58,11 @@ def install(
         _Installers,
         typer.Option(help="Which tool should be used to install the package"),
     ] = _Installers.pip,
-    unknown_args: typer.Context = typer.Option(()),
+    python: Annotated[
+        str,
+        typer.Option(help="Python executable to use"),
+    ] = sys.executable,
+    unknown_args: typer.Context = typer.Option(None),
 ) -> None:
     if not os.environ.get("CI"):
         raise NotOnCIError()
@@ -75,17 +79,18 @@ def install(
         ecosystem, package_manager = detect_ecosystem_and_package_manager()
     log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
 
-    install_external_cmd = external.install_command(ecosystem, package_manager=package_manager)
+    install_external_cmds = external.install_commands(ecosystem, package_manager=package_manager)
     if installer == _Installers.pip:
-        install_cmd = [sys.executable, "-m", "pip", "install"]
+        install_cmd = [python, "-m", "pip", "install"]
     elif installer == _Installers.uv:
-        install_cmd = ["uv", "pip", "install", "--python", sys.executable]
+        install_cmd = ["uv", "pip", "install", "--python", python]
     else:
         raise ValueError(f"Unrecognized 'installer': {installer}")
 
     try:
         # 1. Install external dependencies
-        subprocess.run(install_external_cmd, check=True)
+        for install_external_cmd in install_external_cmds:
+            subprocess.run(install_external_cmd.render(), check=True)
         # 2. Build wheel
         with (
             activated_conda_env(package_manager=package_manager)

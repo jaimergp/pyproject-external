@@ -33,6 +33,9 @@ def prepare(
         str,
         typer.Argument(help="PyPI package name to download and patch."),
     ],
+    version: Annotated[
+        str, typer.Option(help="Exact version to fetch. No operators allowed.")
+    ] = "",
     external_metadata_dir: Annotated[
         str,
         typer.Option(
@@ -54,7 +57,7 @@ def prepare(
 ) -> None:
     with TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        fname_sdist = download_sdist(package_name, tmp)
+        fname_sdist = download_sdist(package_name, tmp, version)
         fname_pyproject_toml = untar_sdist(fname_sdist, tmp)
         append_external_metadata(
             fname_pyproject_toml,

@@ -301,7 +301,7 @@ class External:
             except ValueError as exc:
                 exceptions.append(exc)
         if exceptions:
-            raise ExceptionGroup(*exceptions)
+            raise ExceptionGroup("Validation errors", exceptions)
 
     def _validate_url(self, url: DepURL, canonical: bool = True, raises: bool = True) -> None:
         unique_urls = set()
@@ -309,6 +309,13 @@ class External:
         for id_ in self.registry.iter_unique_ids():
             unique_strs.append(id_)
             unique_urls.add(DepURL.from_string(id_))
+        # Clean a bit
+        components = url.to_dict()
+        components.pop("version", None)
+        components.pop("qualifiers", None)
+        components.pop("subpath", None)
+        url = DepURL(**components)
+
         if url not in unique_urls:
             most_similar = sorted(
                 unique_strs,

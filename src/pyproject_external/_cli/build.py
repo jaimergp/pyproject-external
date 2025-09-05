@@ -66,6 +66,10 @@ def build(
             help="Which installer tool should be used to provide the isolated 'build' venv"
         ),
     ] = _Installers.pip,
+    python: Annotated[
+        str,
+        typer.Option(help="Python executable to use"),
+    ] = sys.executable,
     unknown_args: typer.Context = typer.Option(()),
 ) -> None:
     if not os.environ.get("CI"):
@@ -83,9 +87,9 @@ def build(
         ecosystem, package_manager = detect_ecosystem_and_package_manager()
     log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
 
-    install_external_cmd = external.install_command(ecosystem, package_manager=package_manager)
+    install_external_cmds = external.install_commands(ecosystem, package_manager=package_manager)
     build_cmd = [
-        sys.executable,
+        python,
         "-m",
         "build",
         "--wheel",
@@ -97,7 +101,8 @@ def build(
     ]
     try:
         # 1. Install external dependencies
-        subprocess.run(install_external_cmd, check=True)
+        for external_cmd in install_external_cmds:
+            subprocess.run(external_cmd.render(), check=True)
         # 2. Build wheel
         with (
             activated_conda_env(package_manager=package_manager)
