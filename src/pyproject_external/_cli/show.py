@@ -59,14 +59,25 @@ def show(
         typer.Option(
             help="Choose output format. 'raw' prints the TOML table as is. "
             "'normalized' processes the 'dep:' URLs before printing them. "
-            "'mapped' prints the dependencies mapped to the given ecosystem. "
+            "'mapped' prints a table with the dependencies mapped to the given ecosystem. "
+            "'mapped-list' does the same but prints the dependencies as a flat list. "
             "'command' prints the install command for the given package manager."
         ),
     ] = _OutputChoices.RAW.value,
     package_manager: Annotated[
         str,
-        typer.Option(help="If given, use this package manager rather than the auto-detected one."),
+        typer.Option(
+            help="If given, use this package manager rather than the auto-detected one. "
+            "Only applies to --output 'mapped', 'mapped-list' and 'command'."
+        ),
     ] = Config.load_user_config().preferred_package_manager or "",
+    command_separator: Annotated[
+        str,
+        typer.Option(
+            help="With --output=command, some package managers will generate several commands. "
+            "Use this option to change how they are joined in a single line.",
+        ),
+    ] = " && ",
 ) -> None:
     package = Path(package)
     pyproject_text = _pyproject_text(package)
@@ -98,8 +109,19 @@ def show(
     # The following outputs might be used in shell substitutions like $(), so use print()
     # directly. rich's print will hard-wrap the line and break the output.
     elif output == _OutputChoices.COMMAND:
-        print(shlex.join(external.install_command(ecosystem, package_manager=package_manager)))
+        print(
+            command_separator.join(
+                map(
+                    str,
+                    external.install_commands(ecosystem, package_manager=package_manager),
+                )
+            )
+        )
     elif output == _OutputChoices.MAPPED_LIST:
-        print(shlex.join(external.map_dependencies(ecosystem, package_manager=package_manager)))
+        print(
+            shlex.join(
+                external.map_versioned_dependencies(ecosystem, package_manager=package_manager)
+            )
+        )
     else:
         raise typer.BadParameter(f"Unknown value for --output: {output}")

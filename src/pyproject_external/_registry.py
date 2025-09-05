@@ -8,6 +8,7 @@ Python API to interact with central registry and associated mappings
 from __future__ import annotations
 
 import json
+import shlex
 import sys
 from collections import UserDict
 from dataclasses import dataclass
@@ -569,6 +570,18 @@ class Command:
         """
         yield from self.render()
 
+    def __str__(self) -> str:
+        """
+        Returns a shell-escaped string representation of the command.
+        """
+        return shlex.join(self.render())
+
+    def __repr__(self) -> str:
+        """
+        Returns a string representation of the rendered command with arguments.
+        """
+        return repr(self.render())
+
 
 @dataclass
 class PackageManager:
@@ -718,7 +731,7 @@ class PackageManager:
             # exact version
             if not self.exact_version_syntax:
                 raise ValueError(
-                    "This package manager does not support exact version constraints."
+                    "This package manager does not support exact version constraints. "
                     f"Spec name '{spec.name}' and version '{spec.version}'."
                 )
             return [
