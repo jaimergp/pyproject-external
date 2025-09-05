@@ -296,13 +296,17 @@ class External:
         :warns: Whether one or more DepURLs are not part of the central registry or canonical.
         """
         exceptions = []
+        seen = set()
         for url in chain(self.iter(), self.iter_optional()):
             if isinstance(url, tuple):
                 url = url[1]  # drop group name that might come from extras and optional deps
+            if url in seen:
+                continue
             try:
                 self._validate_url(url, canonical=canonical, raises=raises)
             except ValueError as exc:
                 exceptions.append(exc)
+            seen.add(url)
         if exceptions:
             raise ExceptionGroup("Validation errors", exceptions)
 
