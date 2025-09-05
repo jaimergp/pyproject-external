@@ -206,7 +206,7 @@ class External:
                     if mapped_for is not None:
                         urls = mapping_method(
                             mapped_for,
-                            name,
+                            categories=(name,),
                             group_name=group_name,
                             package_manager=package_manager,
                         )
@@ -218,7 +218,7 @@ class External:
                 if mapped_for is not None:
                     value = mapping_method(
                         mapped_for,
-                        name,
+                        categories=(name,),
                         package_manager=package_manager,
                     )
                 else:
