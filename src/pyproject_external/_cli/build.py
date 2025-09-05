@@ -88,8 +88,8 @@ def build(
     package = Path(package)
     pyproject_text = _pyproject_text(package)
     pyproject = tomllib.loads(pyproject_text)
-    external = External.from_pyproject_data(pyproject)
-    external.validate()
+    external: External = External.from_pyproject_data(pyproject)
+    external.validate(raises=False)
 
     if package_manager:
         ecosystem = find_ecosystem_for_package_manager(package_manager)
