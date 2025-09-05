@@ -20,7 +20,7 @@ def download_sdist(package_name: str, sdist_dir: str | Path, version: str = "") 
         metadata = client.get_metadata(package_name)
 
     url = None
-    for item in metadata.get_wheel_tag_mapping(version):
+    for item in metadata.get_wheel_tag_mapping(version or None):
         if isinstance(item, list):  # sdist
             assert len(item) == 1 and str(item[0]).endswith("tar.gz")
             url = str(item[0])
