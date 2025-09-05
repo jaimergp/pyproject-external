@@ -3,29 +3,34 @@
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 from textwrap import dedent
 
 import pytest
 
+from pyproject_external._cli.build import app as build
+from pyproject_external._cli.install import app as install
 from pyproject_external._cli.prepare import prepare
 from pyproject_external._cli.show import _OutputChoices, show
 
 
-@pytest.mark.skipif(not shutil.which("conda"), reason="conda not available")
+@pytest.mark.skipif(not shutil.which("micromamba"), reason="micromamba not available")
 def test_run_command_show(tmp_path):
     (tmp_path / "pyproject.toml").write_text(
         '[external]\nhost_requires = ["dep:generic/llvm@<20"]'
     )
     subprocess.run(
         f'set -x; eval "$({sys.executable} -m pyproject_external show --output=command '
-        f'{tmp_path} --package-manager=conda)"',
+        f'{tmp_path} --package-manager=micromamba)"',
         shell=True,
         check=True,
     )
 
 
-def test_show_integration(tmp_path):
-    (tmp_path / "cryptography.toml").write_text(
+@pytest.fixture(scope="session")
+def prepared_cryptography(tmp_path_factory) -> Path:
+    tmp = tmp_path_factory.mktemp("pyproject-external-prepare")
+    (tmp / "cryptography.toml").write_text(
         dedent(
             """
             [external]
@@ -36,15 +41,83 @@ def test_show_integration(tmp_path):
             ]
             host-requires = [
             "dep:generic/openssl@>=3",
-            "dep:generic/libffi@3.5.2",
+            "dep:generic/libffi@3.4.6",
             ]
             """
         ).lstrip()
     )
     prepare(
         "cryptography",
-        external_metadata_dir=tmp_path,
-        out_dir=tmp_path,
+        version="45.0.7",
+        external_metadata_dir=tmp,
+        out_dir=tmp,
     )
+    return next(tmp.glob("*.tar.gz"))
+
+
+def test_show(prepared_cryptography):
     for output in _OutputChoices:
-        show(next(tmp_path.glob("*.tar.gz")), output=output, package_manager="conda")
+        show(prepared_cryptography, output=output, package_manager="micromamba")
+
+
+@pytest.fixture
+def conda_python_env(tmp_path, monkeypatch):
+    subprocess.run(
+        [
+            "micromamba",
+            "create",
+            "--yes",
+            "--prefix",
+            str(tmp_path / "env"),
+            "--override-channels",
+            "--channel=conda-forge",
+            "python",
+            "pip",
+            "python-build",
+        ],
+        check=True,
+    )
+    monkeypatch.setenv("CONDA_PREFIX", str(tmp_path / "env"))
+    yield tmp_path / "env"
+
+
+@pytest.mark.skipif(not shutil.which("micromamba"), reason="micromamba not available")
+def test_install(prepared_cryptography, conda_python_env, monkeypatch):
+    python = (
+        conda_python_env / "python.exe"
+        if sys.platform.startswith("win")
+        else conda_python_env / "bin" / "python"
+    )
+    monkeypatch.setenv("CI", "1")
+    with pytest.raises(SystemExit, check=lambda exc: exc.code == 0):
+        install(
+            [
+                str(prepared_cryptography),
+                "--package-manager",
+                "micromamba",
+                "--python",
+                str(python),
+            ]
+        )
+
+
+@pytest.mark.skipif(not shutil.which("micromamba"), reason="micromamba not available")
+def test_build(prepared_cryptography, conda_python_env, tmp_path, monkeypatch):
+    python = (
+        conda_python_env / "python.exe"
+        if sys.platform.startswith("win")
+        else conda_python_env / "bin" / "python"
+    )
+    monkeypatch.setenv("CI", "1")
+    with pytest.raises(SystemExit, check=lambda exc: exc.code == 0):
+        build(
+            [
+                str(prepared_cryptography),
+                "--package-manager",
+                "micromamba",
+                "--python",
+                str(python),
+                "--outdir",
+                str(tmp_path),
+            ]
+        )

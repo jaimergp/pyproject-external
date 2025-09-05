@@ -15,12 +15,12 @@ from subprocess import run
 from pypi_json import PyPIJSON
 
 
-def download_sdist(package_name: str, sdist_dir: str | Path) -> str:
+def download_sdist(package_name: str, sdist_dir: str | Path, version: str = "") -> str:
     with PyPIJSON() as client:
         metadata = client.get_metadata(package_name)
 
     url = None
-    for item in metadata.get_wheel_tag_mapping():
+    for item in metadata.get_wheel_tag_mapping(version):
         if isinstance(item, list):  # sdist
             assert len(item) == 1 and str(item[0]).endswith("tar.gz")
             url = str(item[0])
