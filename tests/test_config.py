@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2025 Quansight Labs
 
+import re
 from textwrap import dedent
 
 import pytest
@@ -35,5 +36,5 @@ def test_config_error(monkeypatch, tmp_path):
             """
         )
     )
-    with pytest.raises(ValueError, match=str(tmp_path)):
+    with pytest.raises(ValueError, match=re.escape(str(tmp_path))):
         Config.load_user_config()
