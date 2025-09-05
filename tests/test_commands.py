@@ -89,6 +89,8 @@ def test_install(prepared_cryptography, conda_python_env, monkeypatch):
         else conda_python_env / "bin" / "python"
     )
     monkeypatch.setenv("CI", "1")
+    if sys.platform.startswith("win"):
+        monkeypatch.setenv("OPENSSL_DIR", str(conda_python_env))
     with pytest.raises(SystemExit, check=lambda exc: exc.code == 0):
         install(
             [
@@ -109,6 +111,8 @@ def test_build(prepared_cryptography, conda_python_env, tmp_path, monkeypatch):
         else conda_python_env / "bin" / "python"
     )
     monkeypatch.setenv("CI", "1")
+    if sys.platform.startswith("win"):
+        monkeypatch.setenv("OPENSSL_DIR", str(conda_python_env))
     with pytest.raises(SystemExit, check=lambda exc: exc.code == 0):
         build(
             [
