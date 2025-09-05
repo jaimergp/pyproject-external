@@ -297,6 +297,8 @@ class External:
         """
         exceptions = []
         for url in chain(self.iter(), self.iter_optional()):
+            if isinstance(url, tuple):
+                url = url[1]  # drop group name that might come from extras and optional deps
             try:
                 self._validate_url(url, canonical=canonical, raises=raises)
             except ValueError as exc:

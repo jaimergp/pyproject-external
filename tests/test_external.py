@@ -18,6 +18,7 @@ def test_external():
         """
     )
     ext: External = External.from_pyproject_data(tomllib.loads(toml))
+    ext.validate()
     assert len(ext.build_requires) == 1
     assert ext.build_requires[0] == DepURL.from_string("dep:virtual/compiler/c")
     assert ext.map_dependencies(
@@ -44,7 +45,8 @@ def test_external_optional():
         ]
         """
     )
-    ext = External.from_pyproject_data(tomllib.loads(toml))
+    ext: External = External.from_pyproject_data(tomllib.loads(toml))
+    ext.validate()
     assert len(ext.optional_build_requires) == 1
     assert len(ext.optional_build_requires["extra"]) == 3
     assert ext.optional_build_requires["extra"] == [
