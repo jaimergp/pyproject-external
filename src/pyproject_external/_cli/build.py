@@ -30,10 +30,13 @@ from .. import (
     detect_ecosystem_and_package_manager,
     find_ecosystem_for_package_manager,
 )
-from ._utils import NotOnCIError, _Installers, _pyproject_text
+from .._constants import PythonInstallers, UnsupportedConstraintsBehaviour
+from .._exceptions import UnsupportedSpecError
+from ._utils import NotOnCIError, _pyproject_text
 
 log = logging.getLogger(__name__)
 app = typer.Typer()
+user_config = Config.load_user_config()
 
 
 @app.command(
@@ -61,15 +64,22 @@ def build(
         typer.Option(help="Output directory for the wheel. Defaults to working directory"),
     ] = None,
     build_installer: Annotated[
-        _Installers,
+        PythonInstallers,
         typer.Option(
             help="Which installer tool should be used to provide the isolated 'build' venv"
         ),
-    ] = _Installers.pip,
+    ] = PythonInstallers.PIP,
     python: Annotated[
         str,
         typer.Option(help="Python executable to use"),
     ] = sys.executable,
+    unsupported_constraints_behaviour: Annotated[
+        UnsupportedConstraintsBehaviour,
+        typer.Option(
+            help="Whether to error, warn or ignore unsupported version constraints. "
+            "Constraints will be dropped if needed."
+        ),
+    ] = user_config.unsupported_constraints_behaviour,
     unknown_args: typer.Context = typer.Option(()),
 ) -> None:
     if not os.environ.get("CI"):
@@ -87,7 +97,22 @@ def build(
         ecosystem, package_manager = detect_ecosystem_and_package_manager()
     log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
 
-    install_external_cmds = external.install_commands(ecosystem, package_manager=package_manager)
+    try:
+        install_external_cmds = external.install_commands(
+            ecosystem,
+            package_manager=package_manager,
+            with_version=True,
+        )
+    except UnsupportedSpecError as exc:
+        if unsupported_constraints_behaviour == UnsupportedConstraintsBehaviour.ERROR:
+            raise
+        if unsupported_constraints_behaviour == UnsupportedConstraintsBehaviour.WARN:
+            log.warning("UnsupportedSpecError: %s. Dropping version info.", exc)
+        install_external_cmds = external.install_commands(
+            ecosystem,
+            package_manager=package_manager,
+            with_version=False,
+        )
     build_cmd = [
         python,
         "-m",

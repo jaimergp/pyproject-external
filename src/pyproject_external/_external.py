@@ -47,6 +47,7 @@ if TYPE_CHECKING:
         "dependency_groups",
     ]
 
+from ._exceptions import ExternalTableNotFoundError
 from ._registry import Command, Ecosystems, MappedSpec, Mapping, Registry
 from ._url import DepURL
 
@@ -164,7 +165,7 @@ class External:
         try:
             return cls(**{k.replace("-", "_"): v for k, v in data["external"].items()})
         except KeyError:
-            raise ValueError("Pyproject data does not have an 'external' table.")
+            raise ExternalTableNotFoundError("Pyproject data does not have an 'external' table.")
 
     @property
     def registry(self) -> Registry:
@@ -352,9 +353,8 @@ class External:
         categories: Iterable[ExternalKeys] | None = None,
         group_name: str | None = None,
         package_manager: str | None = None,
-        return_type: Literal[
-            "names", "versioned_specs", "install_commands", "query_commands"
-        ] = "names",
+        with_version: bool = True,
+        return_type: Literal["specs", "install_commands", "query_commands"] = "specs",
     ) -> list[str] | list[list[str]]:
         ecosystem_names = list(Ecosystems.from_default().iter_names())
         if ecosystem not in ecosystem_names:
@@ -420,6 +420,7 @@ class External:
                     ecosystem,
                     dep_str,
                     specs_type,
+                    with_version,
                     required,
                 ):
                     mapped_specs.extend(specs)
@@ -431,6 +432,7 @@ class External:
                 ecosystem,
                 "dep:generic/python",
                 "build",
+                with_version=with_version,
                 required=True,
             )
         ):
@@ -438,9 +440,10 @@ class External:
         mgr = mapping.get_package_manager(package_manager)
         if return_type in ("install_commands", "query_commands"):
             return mgr.render_commands(return_type.split("_")[0], mapped_specs)
-        if return_type == "versioned_specs":
+        # return_type == "specs"
+        if with_version:
             return list(chain(*(mgr.render_spec(spec) for spec in mapped_specs)))
-        # return_type == "names"
+        # no version:
         return list(dict.fromkeys([spec.name for spec in mapped_specs]))
 
     def _process_one_dep_url(
@@ -450,6 +453,7 @@ class External:
         ecosystem: str,
         dep_str: str,
         specs_type: str,
+        with_version: bool,
         required: bool,
     ) -> list[MappedSpec]:
         for specs in mapping.iter_specs_by_id(
@@ -458,7 +462,10 @@ class External:
             resolve_with_registry=self.registry,
         ):
             if specs:
-                return specs
+                if with_version:
+                    return specs
+                # drop version
+                return [MappedSpec(spec.name, "") for spec in specs]
         msg = (
             f"[{category}] '{dep_str}' does not have any '{specs_type}' mappings in '{ecosystem}'!"
         )
@@ -499,7 +506,8 @@ class External:
             categories=categories,
             group_name=group_name,
             package_manager=package_manager,
-            return_type="names",
+            with_version=False,
+            return_type="specs",
         )
 
     def map_versioned_dependencies(
@@ -528,7 +536,8 @@ class External:
             categories=categories,
             group_name=group_name,
             package_manager=package_manager,
-            return_type="versioned_specs",
+            with_version=True,
+            return_type="specs",
         )
 
     def install_commands(
@@ -537,6 +546,7 @@ class External:
         categories: Iterable[ExternalKeys] | None = None,
         group_name: str | None = None,
         package_manager: str | None = None,
+        with_version: bool = True,
     ) -> list[Command]:
         """
         Map DepURLs to their corresponding installation commands for the chosen
@@ -545,9 +555,10 @@ class External:
         :param ecosystem: Name of the target ecosystem.
         :param categories: Which categories to process. If not provided, all categories will be mapped.
         :param group_name: Which group to process (for non-required categories). If not provided,
-        all groups will be mapped.
+            all groups will be mapped.
         :param package_manager: Name of package manager that will refine the mapping syntax. If not
             provided, the first one in the mapping will be used.
+        :param with_version: Whether to keep or drop the version constraints, if present.
         :returns: List of install commands that correspond to the given DepURLs.
         """
         return self._map_deps_or_command_impl(
@@ -555,6 +566,7 @@ class External:
             categories=categories,
             group_name=group_name,
             package_manager=package_manager,
+            with_version=with_version,
             return_type="install_commands",
         )
 
@@ -564,6 +576,7 @@ class External:
         categories: Iterable[ExternalKeys] | None = None,
         group_name: str | None = None,
         package_manager: str | None = None,
+        with_version: bool = True,
     ) -> list[Command]:
         """
         Map DepURLs to their corresponding query commands for the chosen `package_manager`
@@ -575,6 +588,7 @@ class External:
         all groups will be mapped.
         :param package_manager: Name of package manager that will refine the mapping syntax. If not
             provided, the first one in the mapping will be used.
+        :param with_version: Whether to keep or drop the version constraints, if present.
         :returns: List of query commands that correspond to the given DepURLs.
         """
         return self._map_deps_or_command_impl(
@@ -582,5 +596,6 @@ class External:
             categories=categories,
             group_name=group_name,
             package_manager=package_manager,
+            with_version=with_version,
             return_type="query_commands",
         )

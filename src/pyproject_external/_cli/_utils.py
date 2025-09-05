@@ -1,5 +1,4 @@
 import tarfile
-from enum import Enum
 from pathlib import Path
 
 import typer
@@ -22,11 +21,6 @@ def _pyproject_text(package: Path) -> str:
     if package.is_dir():
         return (package / "pyproject.toml").read_text()
     raise typer.BadParameter(f"Package {package} is not a valid path.")
-
-
-class _Installers(str, Enum):
-    pip = "pip"
-    uv = "uv"
 
 
 class NotOnCIError(RuntimeError):

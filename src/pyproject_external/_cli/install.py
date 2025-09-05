@@ -28,10 +28,13 @@ from .. import (
     detect_ecosystem_and_package_manager,
     find_ecosystem_for_package_manager,
 )
-from ._utils import NotOnCIError, _Installers, _pyproject_text
+from .._constants import PythonInstallers, UnsupportedConstraintsBehaviour
+from .._exceptions import UnsupportedSpecError
+from ._utils import NotOnCIError, _pyproject_text
 
 log = logging.getLogger(__name__)
 app = typer.Typer()
+user_config = Config.load_user_config()
 
 
 @app.command(
@@ -53,15 +56,22 @@ def install(
             help="If given, use this package manager to install the external dependencies "
             "rather than the auto-detected one."
         ),
-    ] = Config.load_user_config().preferred_package_manager or "",
+    ] = user_config.preferred_package_manager or "",
     installer: Annotated[
-        _Installers,
+        PythonInstallers,
         typer.Option(help="Which tool should be used to install the package"),
-    ] = _Installers.pip,
+    ] = PythonInstallers.PIP,
     python: Annotated[
         str,
         typer.Option(help="Python executable to use"),
     ] = sys.executable,
+    unsupported_constraints_behaviour: Annotated[
+        UnsupportedConstraintsBehaviour,
+        typer.Option(
+            help="Whether to error, warn or ignore unsupported version constraints when mapping. "
+            "Constraints will be dropped if needed."
+        ),
+    ] = user_config.unsupported_constraints_behaviour,
     unknown_args: typer.Context = typer.Option(None),
 ) -> None:
     if not os.environ.get("CI"):
@@ -70,7 +80,7 @@ def install(
     package = Path(package)
     pyproject_text = _pyproject_text(package)
     pyproject = tomllib.loads(pyproject_text)
-    external = External.from_pyproject_data(pyproject)
+    external: External = External.from_pyproject_data(pyproject)
     external.validate()
 
     if package_manager:
@@ -79,10 +89,25 @@ def install(
         ecosystem, package_manager = detect_ecosystem_and_package_manager()
     log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
 
-    install_external_cmds = external.install_commands(ecosystem, package_manager=package_manager)
-    if installer == _Installers.pip:
+    try:
+        install_external_cmds = external.install_commands(
+            ecosystem,
+            package_manager=package_manager,
+            with_version=True,
+        )
+    except UnsupportedSpecError as exc:
+        if unsupported_constraints_behaviour == UnsupportedConstraintsBehaviour.ERROR:
+            raise
+        if unsupported_constraints_behaviour == UnsupportedConstraintsBehaviour.WARN:
+            log.warning("UnsupportedSpecError: %s. Dropping version info.", exc)
+        install_external_cmds = external.install_commands(
+            ecosystem,
+            package_manager=package_manager,
+            with_version=False,
+        )
+    if installer == PythonInstallers.PIP:
         install_cmd = [python, "-m", "pip", "install"]
-    elif installer == _Installers.uv:
+    elif installer == PythonInstallers.UV:
         install_cmd = ["uv", "pip", "install", "--python", python]
     else:
         raise ValueError(f"Unrecognized 'installer': {installer}")

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2025 Quansight Labs
+import logging
 import shutil
 import subprocess
 import sys
@@ -12,6 +13,8 @@ from pyproject_external._cli.build import app as build
 from pyproject_external._cli.install import app as install
 from pyproject_external._cli.prepare import prepare
 from pyproject_external._cli.show import _OutputChoices, show
+from pyproject_external._constants import UnsupportedConstraintsBehaviour
+from pyproject_external._exceptions import UnsupportedSpecError
 
 
 @pytest.mark.skipif(not shutil.which("micromamba"), reason="micromamba not available")
@@ -66,6 +69,36 @@ def test_prepare(tmp_path) -> Path:
 def test_show(prepared_cryptography):
     for output in _OutputChoices:
         show(prepared_cryptography, output=output, package_manager="micromamba")
+
+
+def test_show_unsupported_constraints_error(prepared_cryptography):
+    with pytest.raises(UnsupportedSpecError):
+        show(
+            prepared_cryptography,
+            output=_OutputChoices.MAPPED_LIST,
+            package_manager="pacman",
+            unsupported_constraints_behaviour=UnsupportedConstraintsBehaviour.ERROR,
+        )
+
+
+def test_show_unsupported_constraints_warning(prepared_cryptography, caplog):
+    caplog.set_level(logging.WARNING)
+    show(
+        prepared_cryptography,
+        output=_OutputChoices.MAPPED_LIST,
+        package_manager="pacman",
+        unsupported_constraints_behaviour=UnsupportedConstraintsBehaviour.WARN,
+    )
+    assert "UnsupportedSpecError" in caplog.text
+
+
+def test_show_unsupported_constraints_ignore(prepared_cryptography):
+    show(
+        prepared_cryptography,
+        output=_OutputChoices.MAPPED_LIST,
+        package_manager="pacman",
+        unsupported_constraints_behaviour=UnsupportedConstraintsBehaviour.IGNORE,
+    )
 
 
 @pytest.fixture

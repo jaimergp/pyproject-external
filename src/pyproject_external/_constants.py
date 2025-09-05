@@ -5,6 +5,7 @@
 Constants used throughout the codebase. All variables need to be typed as `Final`.
 """
 
+from enum import Enum
 from typing import Final
 
 APP_NAME: Final[str] = "pyproject-external"
@@ -33,3 +34,14 @@ DEFAULT_REGISTRY_SCHEMA_URL: Final[str] = (
 DEFAULT_REGISTRY_URL: Final[str] = (
     "https://raw.githubusercontent.com/jaimergp/external-metadata-mappings/main/data/registry.json"
 )
+
+
+class PythonInstallers(str, Enum):
+    PIP = "pip"
+    UV = "uv"
+
+
+class UnsupportedConstraintsBehaviour(str, Enum):
+    ERROR = "error"
+    WARN = "warn"
+    IGNORE = "ignore"

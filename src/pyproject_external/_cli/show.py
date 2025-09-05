@@ -27,10 +27,13 @@ from .. import (
     detect_ecosystem_and_package_manager,
     find_ecosystem_for_package_manager,
 )
+from .._constants import UnsupportedConstraintsBehaviour
+from .._exceptions import UnsupportedSpecError
 from ._utils import _pyproject_text
 
 log = logging.getLogger(__name__)
 app = typer.Typer()
+user_config = Config.load_user_config()
 
 
 class _OutputChoices(Enum):
@@ -70,7 +73,7 @@ def show(
             help="If given, use this package manager rather than the auto-detected one. "
             "Only applies to --output 'mapped', 'mapped-list' and 'command'."
         ),
-    ] = Config.load_user_config().preferred_package_manager or "",
+    ] = user_config.preferred_package_manager or "",
     command_separator: Annotated[
         str,
         typer.Option(
@@ -78,6 +81,13 @@ def show(
             "Use this option to change how they are joined in a single line.",
         ),
     ] = " && ",
+    unsupported_constraints_behaviour: Annotated[
+        UnsupportedConstraintsBehaviour,
+        typer.Option(
+            help="Whether to error, warn or ignore unsupported version constraints when mapping. "
+            "Constraints will be dropped if needed."
+        ),
+    ] = user_config.unsupported_constraints_behaviour,
 ) -> None:
     package = Path(package)
     pyproject_text = _pyproject_text(package)
@@ -86,7 +96,7 @@ def show(
     if not raw_external:
         raise typer.BadParameter("Package's pyproject.toml does not contain an 'external' table.")
 
-    external = External.from_pyproject_data(pyproject)
+    external: External = External.from_pyproject_data(pyproject)
     if validate:
         external.validate()
 
@@ -95,7 +105,15 @@ def show(
         return
 
     if output == _OutputChoices.NORMALIZED:
-        rprint(escape(tomli_w.dumps(external.to_dict())))
+        try:
+            to_dump = external.to_dict(with_version=True)
+        except UnsupportedSpecError as exc:
+            if unsupported_constraints_behaviour == UnsupportedConstraintsBehaviour.ERROR:
+                raise
+            if unsupported_constraints_behaviour == UnsupportedConstraintsBehaviour.WARN:
+                log.warning("UnsupportedSpecError: %s. Dropping version info.", exc)
+            to_dump = external.to_dict(with_version=False)
+        rprint(escape(tomli_w.dumps(to_dump)))
         return
 
     if package_manager:
@@ -104,24 +122,52 @@ def show(
         ecosystem, package_manager = detect_ecosystem_and_package_manager()
     log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
     if output == _OutputChoices.MAPPED_TABLE:
-        mapped_dict = external.to_dict(mapped_for=ecosystem, package_manager=package_manager)
+        try:
+            mapped_dict = external.to_dict(
+                mapped_for=ecosystem,
+                package_manager=package_manager,
+                with_version=True,
+            )
+        except UnsupportedSpecError as exc:
+            if unsupported_constraints_behaviour == UnsupportedConstraintsBehaviour.ERROR:
+                raise
+            if unsupported_constraints_behaviour == UnsupportedConstraintsBehaviour.WARN:
+                log.warning("UnsupportedSpecError: %s. Dropping version info.", exc)
+            mapped_dict = external.to_dict(
+                mapped_for=ecosystem,
+                package_manager=package_manager,
+                with_version=False,
+            )
         rprint(escape(tomli_w.dumps(mapped_dict)))
     # The following outputs might be used in shell substitutions like $(), so use print()
     # directly. rich's print will hard-wrap the line and break the output.
     elif output == _OutputChoices.COMMAND:
-        print(
-            command_separator.join(
-                map(
-                    str,
-                    external.install_commands(ecosystem, package_manager=package_manager),
-                )
+        try:
+            commands = external.install_commands(
+                ecosystem,
+                package_manager=package_manager,
+                with_version=True,
             )
-        )
+        except UnsupportedSpecError as exc:
+            if unsupported_constraints_behaviour == UnsupportedConstraintsBehaviour.ERROR:
+                raise
+            if unsupported_constraints_behaviour == UnsupportedConstraintsBehaviour.WARN:
+                log.warning("UnsupportedSpecError: %s. Dropping version info.", exc)
+            commands = external.install_commands(
+                ecosystem,
+                package_manager=package_manager,
+                with_version=False,
+            )
+        print(command_separator.join(map(str, commands)))
     elif output == _OutputChoices.MAPPED_LIST:
-        print(
-            shlex.join(
-                external.map_versioned_dependencies(ecosystem, package_manager=package_manager)
-            )
-        )
+        try:
+            deps = external.map_versioned_dependencies(ecosystem, package_manager=package_manager)
+        except UnsupportedSpecError as exc:
+            if unsupported_constraints_behaviour == UnsupportedConstraintsBehaviour.ERROR:
+                raise
+            if unsupported_constraints_behaviour == UnsupportedConstraintsBehaviour.WARN:
+                log.warning("UnsupportedSpecError: %s. Dropping version info.", exc)
+            deps = external.map_dependencies(ecosystem, package_manager=package_manager)
+        print(shlex.join(deps))
     else:
         raise typer.BadParameter(f"Unknown value for --output: {output}")
