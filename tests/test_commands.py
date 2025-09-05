@@ -82,7 +82,9 @@ def conda_python_env(tmp_path, monkeypatch):
 
 
 @pytest.mark.skipif(not shutil.which("micromamba"), reason="micromamba not available")
-@pytest.mark.skipif(sys.platform.startswith("win"), reason="SSL errors on Windows, needs debugging")
+@pytest.mark.skipif(
+    sys.platform.startswith("win"), reason="SSL errors on Windows, needs debugging"
+)
 def test_install(prepared_cryptography, conda_python_env, monkeypatch):
     python = (
         conda_python_env / "python.exe"
@@ -105,7 +107,9 @@ def test_install(prepared_cryptography, conda_python_env, monkeypatch):
 
 
 @pytest.mark.skipif(not shutil.which("micromamba"), reason="micromamba not available")
-@pytest.mark.skipif(sys.platform.startswith("win"), reason="SSL errors on Windows, needs debugging")
+@pytest.mark.skipif(
+    sys.platform.startswith("win"), reason="SSL errors on Windows, needs debugging"
+)
 def test_build(prepared_cryptography, conda_python_env, tmp_path, monkeypatch):
     python = (
         conda_python_env / "python.exe"
