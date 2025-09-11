@@ -6,6 +6,7 @@ import pytest
 from packaging.markers import Marker
 
 from pyproject_external import DepURL
+from pyproject_external._exceptions import UnsupportedSpecError
 
 
 @pytest.mark.parametrize(
@@ -27,15 +28,15 @@ def test_parse(url):
 
 
 def test_parse_invalid_versions():
-    with pytest.raises(ValueError, match="not PEP440 compatible"):
+    with pytest.raises(UnsupportedSpecError, match="not PEP440 compatible"):
         DepURL.from_string("dep:pypi/requests@2.*")
-    with pytest.raises(ValueError, match="not PEP440 compatible"):
+    with pytest.raises(UnsupportedSpecError, match="not PEP440 compatible"):
         DepURL.from_string("dep:pypi/requests@>=2.*")
-    with pytest.raises(ValueError, match="not PEP440 compatible"):
+    with pytest.raises(UnsupportedSpecError, match="not PEP440 compatible"):
         DepURL.from_string("dep:pypi/requests@X.Y")
-    with pytest.raises(ValueError, match="not PEP440 compatible"):
+    with pytest.raises(UnsupportedSpecError, match="not PEP440 compatible"):
         DepURL.from_string("dep:pypi/requests@>=X.Y")
-    with pytest.raises(ValueError, match="not PEP440 compatible"):
+    with pytest.raises(UnsupportedSpecError, match="not PEP440 compatible"):
         DepURL.from_string("dep:pypi/requests@~!%%")
 
 

@@ -36,6 +36,7 @@ from ._exceptions import (
     VersionConstraintNotSupportedError,
     VersionRangesNotSupportedError,
 )
+from ._url import validate_version_str
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -507,6 +508,8 @@ class MappedSpec:
     def __post_init__(self):
         if not self.name:
             raise ValueError("'name' cannot be empty.")
+        if self.version:
+            validate_version_str(self.name, self.version)
 
     def __hash__(self) -> int:
         return hash(f"{self.name}-{self.version}")
@@ -747,7 +750,6 @@ class PackageManager:
         mapped_constraints = []
         for constraint in constraints:
             constraint = Specifier(constraint)
-            self._validate_specifier(spec.name, constraint)
             constraint_template = getattr(
                 self, f"version_ranges_{constraint._operators[constraint.operator]}"
             )

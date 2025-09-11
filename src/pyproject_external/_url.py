@@ -16,6 +16,8 @@ from packaging.markers import InvalidMarker, Marker
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
 
+from ._exceptions import UnsupportedSpecError, VersionConstraintNotSupportedError
+
 if TYPE_CHECKING:
     from typing import AnyStr, ClassVar
 
@@ -59,17 +61,7 @@ class DepURL(PackageURL):
             # names are normalized to lowercase
             name = name.lower()
 
-        if version is not None:
-            # Validate version is parsable
-            try:
-                if version[0].isdigit():
-                    Version(version)
-                else:
-                    SpecifierSet(version)
-            except (InvalidVersion, InvalidSpecifier) as exc:
-                raise ValueError(f"Version field '{version}' is not PEP440 compatible.") from exc
-
-        return super().__new__(
+        inst = super().__new__(
             cls,
             type=type,
             namespace=namespace,
@@ -78,6 +70,11 @@ class DepURL(PackageURL):
             qualifiers=qualifiers,
             subpath=subpath,
         )
+
+        if version is not None:
+            validate_version_str(inst.to_string(), version)
+
+        return inst
 
     @classmethod
     def from_string(cls, value: str) -> Self:
@@ -164,3 +161,28 @@ class DepURL(PackageURL):
         if marker := self.qualifiers.get("environment_marker"):
             return Marker(marker)
         return None
+
+
+def validate_version_str(name: str, version: str) -> None:
+    # Validate version is parsable
+    try:
+        if version[0].isdigit():
+            Version(version)
+            return
+        specifier_set = SpecifierSet(version)
+    except (InvalidVersion, InvalidSpecifier) as exc:
+        raise UnsupportedSpecError(
+            f"Version '{version}' in '{name}' is not PEP440 compatible."
+        ) from exc
+
+    not_supported = ("~=", "===", "!=")
+    for specifier in specifier_set:
+        if specifier.operator in not_supported:
+            raise VersionConstraintNotSupportedError(
+                f"Package '{name}' has invalid operator '{specifier.operator}' "
+                f"in constraint '{specifier_set}'."
+            )
+        if "*" in specifier.version:
+            raise VersionConstraintNotSupportedError(
+                f"Package '{name}' has invalid operator '*' in constraint '{specifier_set}'."
+            )
