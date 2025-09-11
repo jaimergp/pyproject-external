@@ -2,20 +2,42 @@
 # SPDX-FileCopyrightText: 2025 Quansight Labs
 import sys
 
+import pytest
 from packaging.markers import Marker
 
 from pyproject_external import DepURL
+from pyproject_external._exceptions import UnsupportedSpecError
 
 
-def test_parse():
-    dep = DepURL.from_string("dep:pypi/requests@>=2.0")
+@pytest.mark.parametrize(
+    "url",
+    [
+        "dep:pypi/requests@>=2.0",
+        "dep:pypi/requests@2.0",
+    ],
+)
+def test_parse(url):
+    dep = DepURL.from_string(url)
     assert isinstance(dep, DepURL)
     # Current packageurl-python (0.16.0) does not
     # complain about operators in versions :)
     assert dep.type == "pypi"
     assert dep.name == "requests"
-    assert dep.version == ">=2.0"
+    assert dep.version == url.split("@")[-1]
     assert dep.environment_marker is None
+
+
+def test_parse_invalid_versions():
+    with pytest.raises(UnsupportedSpecError, match="not PEP440 compatible"):
+        DepURL.from_string("dep:pypi/requests@2.*")
+    with pytest.raises(UnsupportedSpecError, match="not PEP440 compatible"):
+        DepURL.from_string("dep:pypi/requests@>=2.*")
+    with pytest.raises(UnsupportedSpecError, match="not PEP440 compatible"):
+        DepURL.from_string("dep:pypi/requests@X.Y")
+    with pytest.raises(UnsupportedSpecError, match="not PEP440 compatible"):
+        DepURL.from_string("dep:pypi/requests@>=X.Y")
+    with pytest.raises(UnsupportedSpecError, match="not PEP440 compatible"):
+        DepURL.from_string("dep:pypi/requests@~!%%")
 
 
 def test_parse_with_environment_marker():
