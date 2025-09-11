@@ -13,6 +13,8 @@ from urllib.parse import unquote
 
 from packageurl import PackageURL
 from packaging.markers import InvalidMarker, Marker
+from packaging.specifiers import InvalidSpecifier, SpecifierSet
+from packaging.version import InvalidVersion, Version
 
 if TYPE_CHECKING:
     from typing import AnyStr, ClassVar
@@ -56,6 +58,16 @@ class DepURL(PackageURL):
             namespace = namespace.lower()
             # names are normalized to lowercase
             name = name.lower()
+
+        if version is not None:
+            # Validate version is parsable
+            try:
+                if version[0].isdigit():
+                    Version(version)
+                else:
+                    SpecifierSet(version)
+            except (InvalidVersion, InvalidSpecifier) as exc:
+                raise ValueError(f"Version field '{version}' is not PEP440 compatible.") from exc
 
         return super().__new__(
             cls,
