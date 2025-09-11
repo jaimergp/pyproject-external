@@ -772,18 +772,6 @@ class PackageManager:
                 result.append(item.format(name=spec.name, ranges=ranges))
         return result
 
-    def _validate_specifier(self, name: str, specifier: Specifier) -> None:
-        not_supported = ("~=", "===", "!=")
-        if specifier.operator in not_supported:
-            raise VersionConstraintNotSupportedError(
-                f"Package '{name}' has invalid operator '{specifier.operator}' "
-                f"in constraint '{specifier}'."
-            )
-        if "*" in specifier.version:
-            raise VersionConstraintNotSupportedError(
-                f"Package '{name}' has invalid operator '*' in constraint '{specifier}'."
-            )
-
 
 @cache
 def default_ecosystems() -> Ecosystems:
