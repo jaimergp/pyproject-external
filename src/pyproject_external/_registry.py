@@ -529,7 +529,7 @@ class ArgumentWithSource(str):
 class Command:
     """
     A dataclass representing a templated (with one item being a `{}` placeholder) command,
-    with its arguments stored separately."""
+    with its metadata-rich arguments stored separately."""
 
     template: list[str]
     arguments: list[ArgumentWithSource]
@@ -537,6 +537,9 @@ class Command:
     def __post_init__(self):
         if len([arg for arg in self.template if arg == "{}"]) != 1:
             raise ValueError("'template' must include one (and one only) `'{}'` item.")
+        for i, arg in enumerate(self.arguments):
+            if not isinstance(arg, ArgumentWithSource):
+                raise ValueError(f"arguments[{i}] '{arg}' item must be 'ArgumentWithSource'.")
         if not self.arguments:
             raise ValueError("'arguments' cannot be empty.")
 
@@ -679,9 +682,9 @@ class PackageManager:
             it will contain one `Command` per `MappedSpec`.
         """
         instructions: CommandInstructions = getattr(self, command)
-        all_args: list[list[str]] = []
-        versioned_args: list[list[str]] = []
-        unversioned_args: list[list[str]] = []
+        all_args: list[list[ArgumentWithSource]] = []
+        versioned_args: list[list[ArgumentWithSource]] = []
+        unversioned_args: list[list[ArgumentWithSource]] = []
         seen = set()
         for spec in specs:
             if spec in seen:
@@ -752,7 +755,10 @@ class PackageManager:
                     f"Spec name '{spec.name}' and version '{spec.version}'."
                 )
             return [
-                item.format(name=spec.name, version=constraint.version)
+                ArgumentWithSource(
+                    item.format(name=spec.name, version=constraint.version),
+                    source=spec,
+                )
                 for item in self.exact_version_syntax
             ]
 
