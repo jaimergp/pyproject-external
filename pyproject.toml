@@ -89,14 +89,6 @@ test-py312 = ["test", "py312"]
 test-py313 = ["test", "py313"]
 pre-commit = ["pre-commit"]
 
-[tool.pixi.dependencies]
-c-compiler = ">=1.11.0,<2"
-rust = ">=1.89.0,<1.90"
-pkg-config = ">=0.29.2,<0.30"
-openssl = ">=3"
-libffi = "==3.4.6"
-python = ">=3.10.18,<3.14"
-
 [tool.ruff]
 line-length = 99
 [tool.ruff.lint]
