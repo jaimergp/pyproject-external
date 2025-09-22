@@ -36,7 +36,7 @@ from ._exceptions import (
     VersionConstraintNotSupportedError,
     VersionRangesNotSupportedError,
 )
-from ._url import validate_version_str
+from ._url import DepURL, validate_version_str
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -435,7 +435,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
             specs_type = (specs_type,)
         for entry in self.iter_by_id(dep_url, **kwargs):
             specs = list(dict.fromkeys(s for key in specs_type for s in entry["specs"][key]))
-            yield [MappedSpec(name, version) for name in specs]
+            yield [MappedSpec(name, version, source=dep_url) for name in specs]
 
     def iter_commands(
         self,
@@ -504,6 +504,7 @@ class MappedSpec:
 
     name: str
     version: str
+    source: DepURL | None = None
 
     def __post_init__(self):
         if not self.name:
@@ -515,6 +516,15 @@ class MappedSpec:
         return hash(f"{self.name}-{self.version}")
 
 
+class ArgumentWithSource(str):
+    """A string subclass representing a command argument annotated with its source DepURL"""
+
+    def __new__(cls, value: object, source: DepURL | None = None):
+        instance = super().__new__(cls, value)
+        instance.source = source
+        return instance
+
+
 @dataclass
 class Command:
     """
@@ -522,7 +532,7 @@ class Command:
     with its arguments stored separately."""
 
     template: list[str]
-    arguments: list[str]
+    arguments: list[ArgumentWithSource]
 
     def __post_init__(self):
         if len([arg for arg in self.template if arg == "{}"]) != 1:
@@ -547,6 +557,10 @@ class Command:
             template=commands[0].template,
             arguments=[arg for command in commands for arg in command.arguments],
         )
+
+    @property
+    def sources(self) -> list[DepURL]:
+        return list(dict.fromkeys(arg.source for arg in self.arguments))
 
     def render(self) -> list[str]:
         """
@@ -688,8 +702,8 @@ class PackageManager:
             if unversioned_args:
                 cmds.append(
                     Command(
-                        instructions.render_template(),
-                        list(chain(*unversioned_args)),
+                        template=instructions.render_template(),
+                        arguments=list(chain(*unversioned_args)),
                     )
                 )
             for args in versioned_args:
@@ -699,7 +713,7 @@ class PackageManager:
             cmds.append(Command(instructions.render_template(), args))
         return cmds
 
-    def render_spec(self, spec: MappedSpec, with_version: bool = True) -> list[str]:
+    def render_spec(self, spec: MappedSpec, with_version: bool = True) -> list[ArgumentWithSource]:
         """
         Given a MappedSpec, generate the list of arguments for this package manager. We need
         to account for name-only, exact-version-only and ranges-supported cases. The first
@@ -720,7 +734,10 @@ class PackageManager:
         Note: Exploded constraints require multiple-specifiers=always.
         """
         if not with_version or not spec.version:
-            return [arg.format(name=spec.name) for arg in self.name_only_syntax]
+            return [
+                ArgumentWithSource(arg.format(name=spec.name), source=spec.source)
+                for arg in self.name_only_syntax
+            ]
 
         if not spec.version.startswith(("=", ">", "<", "!", "~")):
             version = f"==={spec.version}"
@@ -765,11 +782,21 @@ class PackageManager:
         if self.version_ranges_and is None:
             for item in self.version_ranges_syntax:
                 for range_ in mapped_constraints:
-                    result.append(item.format(name=spec.name, ranges=range_))
+                    result.append(
+                        ArgumentWithSource(
+                            item.format(name=spec.name, ranges=range_),
+                            source=spec.source,
+                        )
+                    )
         else:
             ranges = self.version_ranges_and.join(mapped_constraints)
             for item in self.version_ranges_syntax:
-                result.append(item.format(name=spec.name, ranges=ranges))
+                result.append(
+                    ArgumentWithSource(
+                        item.format(name=spec.name, ranges=ranges),
+                        source=spec.source,
+                    )
+                )
         return result
 
 
