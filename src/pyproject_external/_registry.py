@@ -537,11 +537,13 @@ class Command:
     def __post_init__(self):
         if len([arg for arg in self.template if arg == "{}"]) != 1:
             raise ValueError("'template' must include one (and one only) `'{}'` item.")
-        for i, arg in enumerate(self.arguments):
-            if not isinstance(arg, ArgumentWithSource):
-                raise ValueError(f"arguments[{i}] '{arg}' item must be 'ArgumentWithSource'.")
         if not self.arguments:
             raise ValueError("'arguments' cannot be empty.")
+        # Coerce to ArgumentWithSource
+        self.arguments = [
+            val if getattr(val, "source", None) else ArgumentWithSource(val)
+            for val in self.arguments
+        ]
 
     @classmethod
     def merge(cls, *commands: Self) -> Self:
