@@ -95,21 +95,16 @@ def query(
     errors = 0
     for query_command in query_commands:
         try:
-            log.info("Querying %s as %s", query_command.sources, query_command.arguments)
-            log.debug("Command: %s", query_command)
+            log.debug("Query command: %s", query_command)
             p = subprocess.run(query_command.render(), capture_output=True, text=True)
             log.debug("Stdout: %s", p.stdout)
             log.debug("Stderr: %s", p.stderr)
             p.check_returncode()
         except subprocess.CalledProcessError as exc:
             log.debug("Query exception.", exc_info=exc)
-            log.error(
-                "Unsatisfied query for specs: %s. Command:",
-                query_command.sources,
-                query_command,
-            )
+            log.error("Could not find %s!", query_command.sources)
             errors += 1
         else:
-            log.info("Found!")
+            log.info("Found %s as %s", query_command.sources, query_command.arguments)
     if errors:
         sys.exit(1)
