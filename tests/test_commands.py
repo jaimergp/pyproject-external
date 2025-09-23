@@ -12,6 +12,7 @@ import pytest
 from pyproject_external._cli.build import app as build
 from pyproject_external._cli.install import app as install
 from pyproject_external._cli.prepare import prepare
+from pyproject_external._cli.query import app as query
 from pyproject_external._cli.show import _OutputChoices, show
 from pyproject_external._constants import UnsupportedConstraintsBehaviour
 from pyproject_external._exceptions import UnsupportedSpecError
@@ -145,6 +146,10 @@ def test_install(prepared_cryptography, conda_python_env, monkeypatch):
                 str(python),
             ]
         )
+    # Now it should find all packages
+    with pytest.raises(SystemExit, check=lambda exc: exc.code == 0):
+        # Note this will always pass because micromamba doesn't return 1 on not found packages (yet)
+        query([str(prepared_cryptography), "--package-manager", "micromamba"])
 
 
 @pytest.mark.skipif(not shutil.which("micromamba"), reason="micromamba not available")

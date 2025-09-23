@@ -494,7 +494,9 @@ class External:
                 if with_version:
                     return specs
                 # drop version
-                return [MappedSpec(spec.name, "") for spec in specs]
+                return [
+                    MappedSpec(name=spec.name, version="", source=spec.source) for spec in specs
+                ]
         msg = (
             f"[{category}] '{dep_str}' does not have any '{specs_type}' mappings in '{ecosystem}'!"
         )

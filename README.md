@@ -12,9 +12,10 @@ anything beyond experimenting.*
 The CLI interface available as `python -m pyproject_external` provides several subcommands:
 
 - `show`: Query `[external]` metadata from pyproject.toml or source distributions. It can render it as is, normalized, mapped to your package manager names, or as a ready-to-run install command.
+- `install`: Install a project in the given location. Wheels will be built as needed. External dependencies are installed before the build starts too.
+- `query`: Query whether the external dependencies of a package are already satisfied.
 - `prepare`: Prepare a package for building with user-provided `[external]` metadata by downloading and patching its most recent sdist.
 - `build`: Build a wheel for the given sdist or project. External dependencies are installed before the build starts.
-- `install`: Install a project in the given location. Wheels will be built as needed. External dependencies are installed before the build starts too.
 
 ### Example
 

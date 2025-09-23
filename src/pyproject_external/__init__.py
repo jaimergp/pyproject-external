@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2023 Quansight Labs
 """
-pyproject-external - Utilities to work with PEP 725 `[external]` metadata
+pyproject-external - Utilities to work with PEP 725 / 804 `[external]` metadata
 """
 
 from ._config import Config  # noqa
