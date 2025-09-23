@@ -102,7 +102,7 @@ def query(
             p.check_returncode()
         except subprocess.CalledProcessError as exc:
             log.debug("Query exception.", exc_info=exc)
-            log.error("Could not find %s!", query_command.sources)
+            log.error("Could not find %s as %s!", query_command.sources, query_command.arguments)
             errors += 1
         else:
             log.info("Found %s as %s", query_command.sources, query_command.arguments)
