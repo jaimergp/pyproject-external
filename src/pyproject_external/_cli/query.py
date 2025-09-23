@@ -42,7 +42,7 @@ def query(
     package: Annotated[
         str,
         typer.Argument(
-            help="Package to build wheel for."
+            help="Package whose external dependencies need to be queried. "
             "It can be a path to a pyproject.toml-containing directory, "
             "or a source distribution."
         ),

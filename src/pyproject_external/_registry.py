@@ -260,7 +260,7 @@ class Ecosystems(UserDict, _Validated, _FromPathOrUrlOrDefault):
 
 class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     """
-    A dict-like interface for the PEP 725 mapping documents.
+    A dict-like interface for the PEP 804 mapping documents.
 
     These documents provide ecosystem-specific definitions for all the DepURL identifiers
     mentioned in the central registry.
