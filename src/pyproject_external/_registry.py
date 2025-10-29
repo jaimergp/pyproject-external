@@ -50,7 +50,7 @@ if TYPE_CHECKING:
     from jsonschema import Validator
 
     _DefaultType = TypeVar("_DefaultType")
-    TBuildHostRun = Literal["build", "host", "run"]
+    TBuildHostRun = Literal["build", "build_host", "run"]
     TMultipleSpecifiers = Literal["always", "name-only", "never"]
 
 log = getLogger(__name__)
@@ -350,7 +350,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
                 if only_mapped:
                     try_specs_from = False
                     if specs := entry.get("specs", {}):
-                        for key in "run", "host", "build":
+                        for key in "run", "build_host", "build":
                             if specs.get(key):
                                 yield entry
                                 break
@@ -381,14 +381,14 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         Normalizes `specs` entries so they are always in their full dictionary form.
         """
         if isinstance(specs, str):
-            specs = {"build": [specs], "host": [specs], "run": [specs]}
+            specs = {"build": [specs], "build_host": [specs], "run": [specs]}
         elif hasattr(specs, "items"):  # assert all fields are present as lists
-            for key in "build", "host", "run":
+            for key in "build", "build_host", "run":
                 specs.setdefault(key, [])
                 if isinstance(specs[key], str):
                     specs[key] = [specs[key]]
         else:  # list
-            specs = {"build": specs, "host": specs, "run": specs}
+            specs = {"build": specs, "build_host": specs, "run": specs}
         return specs
 
     def get_package_manager(self, name: str) -> PackageManager:
@@ -430,7 +430,7 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         else:
             version = ""
         if specs_type is None:
-            specs_type = ("build", "host", "run")
+            specs_type = ("build", "build_host", "run")
         elif isinstance(specs_type, str):
             specs_type = (specs_type,)
         for entry in self.iter_by_id(dep_url, **kwargs):

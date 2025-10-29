@@ -21,7 +21,7 @@ from pyproject_external._exceptions import UnsupportedSpecError
 @pytest.mark.skipif(not shutil.which("micromamba"), reason="micromamba not available")
 def test_run_command_show(tmp_path):
     (tmp_path / "pyproject.toml").write_text(
-        '[external]\nhost_requires = ["dep:generic/llvm@<20"]'
+        '[external]\nbuild_host_requires = ["dep:generic/llvm@<20"]'
     )
     subprocess.run(
         f'set -x; eval "$({sys.executable} -m pyproject_external show --output=command '
@@ -41,7 +41,7 @@ def _prepare_cryptography(tmpdir, version="") -> Path:
             "dep:virtual/compiler/rust",
             "dep:generic/pkg-config",
             ]
-            host-requires = [
+            build-host-requires = [
             "dep:generic/openssl@>=3",
             "dep:generic/libffi@3.4.6",
             ]
