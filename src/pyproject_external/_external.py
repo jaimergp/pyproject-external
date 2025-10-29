@@ -39,10 +39,10 @@ if TYPE_CHECKING:
 
     ExternalKeys: TypeAlias = Literal[
         "build_requires",
-        "host_requires",
+        "build_host_requires",
         "dependencies",
         "optional_build_requires",
-        "optional_host_requires",
+        "optional_build_host_requires",
         "optional_dependencies",
         "dependency_groups",
     ]
@@ -90,8 +90,8 @@ class External:
 
     Each `[external]` category is available as:
 
-    - `build_requires` / `host_requires` / `dependencies`: list of `DepURL` objects.
-    - `optional_build_requires` / `optional_host_requires` / `optional_dependencies`
+    - `build_requires` / `build_host_requires` / `dependencies`: list of `DepURL` objects.
+    - `optional_build_requires` / `optional_build_host_requires` / `optional_dependencies`
       / `dependency_groups`: dict that maps group names to a list of `DepURL` objects.
 
     Note that DepURL strings will be parsed on load and cause validation errors if not well-formed.
@@ -111,10 +111,10 @@ class External:
     """
 
     build_requires: list[DepURL] = field(default_factory=list)
-    host_requires: list[DepURL] = field(default_factory=list)
+    build_host_requires: list[DepURL] = field(default_factory=list)
     dependencies: list[DepURL] = field(default_factory=list)
     optional_build_requires: dict[str, list[DepURL]] = field(default_factory=dict)
-    optional_host_requires: dict[str, list[DepURL]] = field(default_factory=dict)
+    optional_build_host_requires: dict[str, list[DepURL]] = field(default_factory=dict)
     optional_dependencies: dict[str, list[DepURL]] = field(default_factory=dict)
     dependency_groups: dict[str, list[DepURL] | dict[str, Any]] = field(default_factory=dict)
 
@@ -122,7 +122,7 @@ class External:
         self._registry = None
         self._group_keys = (
             "optional_build_requires",
-            "optional_host_requires",
+            "optional_build_host_requires",
             "optional_dependencies",
             "dependency_groups",
         )
@@ -231,7 +231,7 @@ class External:
         self,
         *categories: Literal[
             "build_requires",
-            "host_requires",
+            "build_host_requires",
             "dependencies",
         ],
     ) -> Iterable[DepURL]:
@@ -245,7 +245,7 @@ class External:
         if not categories:
             categories = (
                 "build_requires",
-                "host_requires",
+                "build_host_requires",
                 "dependencies",
             )
         for category in categories:
@@ -255,7 +255,7 @@ class External:
         self,
         *categories: Literal[
             "optional_build_requires",
-            "optional_host_requires",
+            "optional_build_host_requires",
             "optional_dependencies",
             "dependency_groups",
         ],
@@ -277,7 +277,7 @@ class External:
         self,
         *categories: Literal[
             "optional_build_requires",
-            "optional_host_requires",
+            "optional_build_host_requires",
             "optional_dependencies",
             "dependency_groups",
         ],
@@ -296,7 +296,7 @@ class External:
         if not categories:
             categories = (
                 "optional_build_requires",
-                "optional_host_requires",
+                "optional_build_host_requires",
                 "optional_dependencies",
                 "dependency_groups",
             )
@@ -406,10 +406,10 @@ class External:
         include_python_dev = False
         category_to_specs_type = {
             "build_requires": "build",
-            "host_requires": "host",
+            "build_host_requires": "build_host",
             "dependencies": "run",
             "optional_build_requires": "build",
-            "optional_host_requires": "host",
+            "optional_build_host_requires": "build_host",
             "optional_dependencies": "run",
             "dependency_groups": "run",
         }
