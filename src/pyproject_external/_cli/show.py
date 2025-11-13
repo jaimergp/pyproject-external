@@ -27,7 +27,7 @@ from .. import (
 )
 from .._constants import UnsupportedConstraintsBehaviour
 from .._exceptions import UnsupportedSpecError
-from ._utils import _handle_ecosystem_and_package_manager, _pyproject_text
+from ._utils import _handle_ecosystem_discovery, _pyproject_text
 
 log = logging.getLogger(__name__)
 app = typer.Typer()
@@ -68,7 +68,8 @@ def show(
     ecosystem: Annotated[
         str,
         typer.Option(
-            help="Use this ecosystem rather than the auto-detected one. "
+            help="Use this ecosystem rather than the auto-detected one. Can be provided as an "
+            "ecosystem name, or as a path or URL to a mapping file. "
             "Only applies to --output 'mapped', 'mapped-list' and 'command'."
         ),
     ] = user_config.preferred_ecosystem or "",
@@ -79,6 +80,18 @@ def show(
             "Only applies to --output 'mapped', 'mapped-list' and 'command'."
         ),
     ] = user_config.preferred_package_manager or "",
+    prepend_mapping: Annotated[
+        str,
+        typer.Option(
+            help="Inject additional mapping information at the beginning of the main mapping file."
+        ),
+    ] = "",
+    extend_mapping: Annotated[
+        str,
+        typer.Option(
+            help="Inject additional mapping information at the end of the main mapping file."
+        ),
+    ] = "",
     command_separator: Annotated[
         str,
         typer.Option(
@@ -121,7 +134,12 @@ def show(
         rprint(escape(tomli_w.dumps(to_dump)))
         return
 
-    ecosystem, package_manager = _handle_ecosystem_and_package_manager(ecosystem, package_manager)
+    ecosystem, package_manager = _handle_ecosystem_discovery(
+        ecosystem,
+        package_manager,
+        prepend=prepend_mapping,
+        append=extend_mapping,
+    )
 
     if output == _OutputChoices.MAPPED_TABLE:
         try:
