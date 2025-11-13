@@ -36,6 +36,7 @@ log = logging.getLogger(__name__)
 app = typer.Typer()
 user_config = Config.load_user_config()
 
+
 @app.command(
     help=__doc__,
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
