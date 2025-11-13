@@ -1,7 +1,16 @@
+import logging
 import tarfile
 from pathlib import Path
 
 import typer
+
+from .._system import (
+    detect_ecosystem_and_package_manager,
+    find_ecosystem_for_package_manager,
+    first_package_manager_in_mapping,
+)
+
+log = logging.getLogger(__name__)
 
 
 def _read_pyproject_from_sdist(path: Path) -> str:
@@ -21,6 +30,19 @@ def _pyproject_text(package: Path) -> str:
     if package.is_dir():
         return (package / "pyproject.toml").read_text()
     raise typer.BadParameter(f"Package {package} is not a valid path.")
+
+
+def _handle_ecosystem_and_package_manager(ecosystem: str, package_manager: str) -> tuple[str, str]:
+    if ecosystem and package_manager:
+        pass
+    elif ecosystem:
+        package_manager = first_package_manager_in_mapping(ecosystem)
+    elif package_manager:
+        ecosystem = find_ecosystem_for_package_manager(package_manager)
+    else:
+        ecosystem, package_manager = detect_ecosystem_and_package_manager()
+    log.info("Detected ecosystem '%s' and package manager '%s'", ecosystem, package_manager)
+    return ecosystem, package_manager
 
 
 class NotOnCIError(RuntimeError):

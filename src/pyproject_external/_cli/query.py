@@ -22,12 +22,10 @@ import typer
 from .. import (
     Config,
     External,
-    detect_ecosystem_and_package_manager,
-    find_ecosystem_for_package_manager,
 )
 from .._constants import UnsupportedConstraintsBehaviour
 from .._exceptions import UnsupportedSpecError
-from ._utils import _pyproject_text
+from ._utils import _handle_ecosystem_and_package_manager, _pyproject_text
 
 log = logging.getLogger(__name__)
 app = typer.Typer()
@@ -47,11 +45,18 @@ def query(
             "or a source distribution."
         ),
     ],
+    ecosystem: Annotated[
+        str,
+        typer.Option(
+            help="Obtain package name mapping from this ecosystem, rather than the "
+            "auto-detected one."
+        ),
+    ] = user_config.preferred_ecosystem or "",
     package_manager: Annotated[
         str,
         typer.Option(
-            help="If given, use this package manager to query the external dependencies "
-            "rather than the auto-detected one."
+            help="Use this package manager to query whether the external dependencies "
+            "are installed."
         ),
     ] = user_config.preferred_package_manager or "",
     unsupported_constraints_behaviour: Annotated[
@@ -69,11 +74,7 @@ def query(
     external: External = External.from_pyproject_data(pyproject)
     external.validate(raises=False)
 
-    if package_manager:
-        ecosystem = find_ecosystem_for_package_manager(package_manager)
-    else:
-        ecosystem, package_manager = detect_ecosystem_and_package_manager()
-    log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
+    ecosystem, package_manager = _handle_ecosystem_and_package_manager(ecosystem, package_manager)
 
     try:
         query_commands = external.query_commands(

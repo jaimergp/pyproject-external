@@ -27,12 +27,10 @@ from .. import (
     Config,
     External,
     activated_conda_env,
-    detect_ecosystem_and_package_manager,
-    find_ecosystem_for_package_manager,
 )
 from .._constants import PythonInstallers, UnsupportedConstraintsBehaviour
 from .._exceptions import UnsupportedSpecError
-from ._utils import NotOnCIError, _pyproject_text
+from ._utils import NotOnCIError, _handle_ecosystem_and_package_manager, _pyproject_text
 
 log = logging.getLogger(__name__)
 app = typer.Typer()
@@ -52,13 +50,20 @@ def build(
             "or a source distribution."
         ),
     ],
+    ecosystem: Annotated[
+        str,
+        typer.Option(
+            help="Install external dependencies from this ecosystem, instead of the "
+            "auto-detected one."
+        ),
+    ] = user_config.preferred_ecosystem or "",
     package_manager: Annotated[
         str,
         typer.Option(
-            help="If given, use this package manager to install the external dependencies "
-            "rather than the auto-detected one."
+            help="Use this package manager to install the external dependencies "
+            "instead of the auto-detected one."
         ),
-    ] = Config.load_user_config().preferred_package_manager or "",
+    ] = user_config.preferred_package_manager or "",
     outdir: Annotated[
         str | None,
         typer.Option(help="Output directory for the wheel. Defaults to working directory"),
@@ -91,11 +96,7 @@ def build(
     external: External = External.from_pyproject_data(pyproject)
     external.validate(raises=False)
 
-    if package_manager:
-        ecosystem = find_ecosystem_for_package_manager(package_manager)
-    else:
-        ecosystem, package_manager = detect_ecosystem_and_package_manager()
-    log.info("Detected ecosystem '%s' for package manager '%s'", ecosystem, package_manager)
+    ecosystem, package_manager = _handle_ecosystem_and_package_manager(ecosystem, package_manager)
 
     try:
         install_external_cmds = external.install_commands(

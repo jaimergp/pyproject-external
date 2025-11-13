@@ -44,6 +44,8 @@ class Config:
     User configuration for the `-m pyproject_external` CLI.
     """
 
+    #: Which ecosystem to use by default on this system, instead of autodetected.
+    preferred_ecosystem: str = ""
     #: Which package manager to use by default on this system, instead of autodetected.
     preferred_package_manager: str = ""
     unsupported_constraints_behaviour: UnsupportedConstraintsBehaviour = (
@@ -55,6 +57,10 @@ class Config:
             raise ValueError(
                 "'preferred_package_manager' must be str, but found "
                 f"{self.preferred_package_manager}."
+            )
+        if not isinstance(self.preferred_ecosystem, str):
+            raise ValueError(
+                f"'preferred_ecosystem' must be str, but found {self.preferred_ecosystem}."
             )
         try:
             self.unsupported_constraints_behaviour = UnsupportedConstraintsBehaviour(
