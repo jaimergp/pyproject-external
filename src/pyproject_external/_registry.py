@@ -273,7 +273,8 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     - `iter_specs_by_id()`: Iterate over all the possible specifiers known for a given DepURL.
     - `iter_commands()`: Iterate over all the install or query commands that can be generated
       for the known specs of a given DepURL.
-    - `get_package_manager()`: Get the instructions for a given package manager name.s
+    - `iter_package_managers()`: Iterate over all the package managers defined in the mapping.
+    - `get_package_manager()`: Get the instructions for a given package manager name.
     """
 
     default_schema: str = DEFAULT_MAPPING_SCHEMA_URL
@@ -390,6 +391,15 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
         else:  # list
             specs = {"build": specs, "build_host": specs, "run": specs}
         return specs
+
+    def iter_package_managers(self) -> Iterable[PackageManager]:
+        """
+        Yields the package managers defined in the mapping.
+
+        :returns: A `PackageManager` instance.
+        """
+        for manager in self.data["package_managers"]:
+            yield PackageManager.from_mapping_entry(manager)
 
     def get_package_manager(self, name: str) -> PackageManager:
         """

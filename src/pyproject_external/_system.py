@@ -24,6 +24,14 @@ from ._registry import default_ecosystems, remote_mapping
 log = logging.getLogger(__name__)
 
 
+def first_package_manager_in_mapping(ecosystem: str) -> str:
+    mapping = remote_mapping(ecosystem)
+    try:
+        return next(mapping.iter_package_managers()).name
+    except StopIteration:
+        raise ValueError(f"No package managers defined in '{ecosystem}'")
+
+
 def find_ecosystem_for_package_manager(package_manager: str) -> str:
     for ecosystem, mapping in default_ecosystems().iter_items():
         mapping = remote_mapping(mapping["mapping"])
