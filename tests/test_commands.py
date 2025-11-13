@@ -140,6 +140,8 @@ def test_install(prepared_cryptography, conda_python_env, monkeypatch):
         install(
             [
                 str(prepared_cryptography),
+                "--ecosystem",
+                "conda-forge",
                 "--package-manager",
                 "micromamba",
                 "--python",
@@ -169,6 +171,8 @@ def test_build(prepared_cryptography, conda_python_env, tmp_path, monkeypatch):
         build(
             [
                 str(prepared_cryptography),
+                "--ecosystem",
+                "conda-forge",
                 "--package-manager",
                 "micromamba",
                 "--python",
