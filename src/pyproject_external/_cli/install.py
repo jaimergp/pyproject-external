@@ -51,15 +51,15 @@ def install(
     ecosystem: Annotated[
         str,
         typer.Option(
-            help="If given, use this ecosystem rather than the auto-detected one. "
-            "Only applies to --output 'mapped', 'mapped-list' and 'command'."
+            help="Install external dependencies from this ecosystem, instead of the "
+            "auto-detected one."
         ),
     ] = user_config.preferred_ecosystem or "",
     package_manager: Annotated[
         str,
         typer.Option(
-            help="If given, use this package manager to install the external dependencies "
-            "rather than the auto-detected one."
+            help="Use this package manager to install the external dependencies "
+            "instead of the auto-detected one."
         ),
     ] = user_config.preferred_package_manager or "",
     installer: Annotated[

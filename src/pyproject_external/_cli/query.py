@@ -48,15 +48,15 @@ def query(
     ecosystem: Annotated[
         str,
         typer.Option(
-            help="If given, use this ecosystem rather than the auto-detected one. "
-            "Only applies to --output 'mapped', 'mapped-list' and 'command'."
+            help="Obtain package name mapping from this ecosystem, rather than the "
+            "auto-detected one."
         ),
     ] = user_config.preferred_ecosystem or "",
     package_manager: Annotated[
         str,
         typer.Option(
-            help="If given, use this package manager to query the external dependencies "
-            "rather than the auto-detected one."
+            help="Use this package manager to query whether the external dependencies "
+            "are installed."
         ),
     ] = user_config.preferred_package_manager or "",
     unsupported_constraints_behaviour: Annotated[

@@ -68,14 +68,14 @@ def show(
     ecosystem: Annotated[
         str,
         typer.Option(
-            help="If given, use this ecosystem rather than the auto-detected one. "
+            help="Use this ecosystem rather than the auto-detected one. "
             "Only applies to --output 'mapped', 'mapped-list' and 'command'."
         ),
     ] = user_config.preferred_ecosystem or "",
     package_manager: Annotated[
         str,
         typer.Option(
-            help="If given, use this package manager rather than the auto-detected one. "
+            help="Use this package manager rather than the auto-detected one. "
             "Only applies to --output 'mapped', 'mapped-list' and 'command'."
         ),
     ] = user_config.preferred_package_manager or "",
