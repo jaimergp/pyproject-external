@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 import requests
 from jsonschema import Draft202012Validator, validators
 from packaging.specifiers import Specifier
+from requests.exceptions import HTTPError
 
 from ._constants import (
     DEFAULT_ECOSYSTEMS_SCHEMA_URL,
@@ -279,6 +280,41 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
 
     default_schema: str = DEFAULT_MAPPING_SCHEMA_URL
     default_source: str = DEFAULT_MAPPING_URL_TEMPLATE
+
+    @classmethod
+    def from_any(cls, name_or_url_or_path: str | Mapping) -> Mapping:
+        if isinstance(name_or_url_or_path, cls):
+            return cls(name_or_url_or_path.data)
+
+        if name_or_url_or_path.startswith(("http://", "https://")):
+            return cls.from_url(name_or_url_or_path)
+        try:
+            # maybe a path?
+            return cls.from_path(name_or_url_or_path)
+        except OSError:
+            # must be a name
+            try:
+                return cls.from_default(name_or_url_or_path)
+            except (OSError, HTTPError):
+                raise ValueError(
+                    f"'{name_or_url_or_path}' is not a valid name, URL or path. "
+                    f"Try one of the names in {cls.default_source}."
+                )
+
+    @classmethod
+    def merge(cls, *mappings: Mapping) -> Mapping:
+        """
+        Merge mappings together.
+        """
+        data = {}
+        for mapping in mappings:
+            if mapping.name and mapping.name != data.get("name", ""):
+                data["name"] = data.get("name", "") + mapping.name
+            if mapping.description and mapping.description != data.get("description", ""):
+                data["description"] = data.get("description", "") + "\n" + mapping.description
+            data.setdefault("mappings", []).extend(mapping.mappings)
+            data.setdefault("package_managers", []).extend(mapping.package_managers)
+        return cls(data)
 
     @property
     def name(self) -> str | None:

@@ -58,7 +58,12 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
     platform_system = platform.system()
     if platform_system == "Linux":
         distro_id = distro.id()
-        for name in (distro_id, *distro.like().split()):
+        candidates = []
+        if distro_version := distro.version():
+            candidates.append(f"{distro_id}+{distro_version}")
+        candidates.append(distro_id)
+        candidates.extend(*distro.like().split())
+        for name in candidates:
             mapping = default_ecosystems().get_mapping(name, default=None)
             if mapping:
                 return name, mapping.package_managers[0]["name"]

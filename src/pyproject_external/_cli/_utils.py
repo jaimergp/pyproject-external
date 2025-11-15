@@ -4,6 +4,7 @@ from pathlib import Path
 
 import typer
 
+from .._registry import Mapping
 from .._system import (
     detect_ecosystem_and_package_manager,
     find_ecosystem_for_package_manager,
@@ -32,7 +33,12 @@ def _pyproject_text(package: Path) -> str:
     raise typer.BadParameter(f"Package {package} is not a valid path.")
 
 
-def _handle_ecosystem_and_package_manager(ecosystem: str, package_manager: str) -> tuple[str, str]:
+def _handle_ecosystem_discovery(
+    ecosystem: str,
+    package_manager: str,
+    prepend: str = "",
+    append: str = "",
+) -> tuple[str, str]:
     if ecosystem and package_manager:
         pass
     elif ecosystem:
@@ -41,7 +47,15 @@ def _handle_ecosystem_and_package_manager(ecosystem: str, package_manager: str) 
         ecosystem = find_ecosystem_for_package_manager(package_manager)
     else:
         ecosystem, package_manager = detect_ecosystem_and_package_manager()
-    log.info("Detected ecosystem '%s' and package manager '%s'", ecosystem, package_manager)
+    log.info("Using ecosystem '%s' and package manager '%s'", ecosystem, package_manager)
+    if prepend or append:
+        ecosystem = Mapping.from_any(ecosystem)
+        if prepend:
+            log.debug("Prepended '%s'", prepend)
+            ecosystem = Mapping.merge(Mapping.from_any(prepend), ecosystem)
+        if append:
+            log.debug("Appended '%s'", append)
+            ecosystem = Mapping.merge(ecosystem, Mapping.from_any(append))
     return ecosystem, package_manager
 
 
