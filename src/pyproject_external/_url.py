@@ -50,6 +50,7 @@ class DepURL(PackageURL):
         version: AnyStr | None = None,
         qualifiers: AnyStr | dict[str, str] | None = None,
         subpath: AnyStr | None = None,
+        normalize_purl: bool = True,
     ) -> Self:
         # Validate virtual types _before_ the namedtuple is created
         if type.lower() == "virtual":
@@ -69,6 +70,7 @@ class DepURL(PackageURL):
             version=version,
             qualifiers=qualifiers,
             subpath=subpath,
+            normalize_purl=normalize_purl,
         )
 
         if version is not None:
@@ -77,7 +79,7 @@ class DepURL(PackageURL):
         return inst
 
     @classmethod
-    def from_string(cls, value: str) -> Self:
+    def from_string(cls, value: str, normalize_purl: bool = True) -> Self:
         """
         Generate a DepURL object from a string, optionally containing an environment marker.
 
@@ -96,7 +98,7 @@ class DepURL(PackageURL):
         else:
             depurl = value
             marker = None
-        parsed = super().from_string(depurl)
+        parsed = super().from_string(depurl, normalize_purl=normalize_purl)
         if marker is not None:
             parsed.qualifiers["environment_marker"] = marker
         return parsed
