@@ -50,6 +50,7 @@ class DepURL(PackageURL):
         version: AnyStr | None = None,
         qualifiers: AnyStr | dict[str, str] | None = None,
         subpath: AnyStr | None = None,
+        normalize_purl: bool = True,
     ) -> Self:
         # Validate virtual types _before_ the namedtuple is created
         if type.lower() == "virtual":
@@ -69,6 +70,7 @@ class DepURL(PackageURL):
             version=version,
             qualifiers=qualifiers,
             subpath=subpath,
+            normalize_purl=normalize_purl,
         )
 
         if version is not None:
