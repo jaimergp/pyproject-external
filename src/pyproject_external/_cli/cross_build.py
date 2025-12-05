@@ -251,10 +251,13 @@ def cross_build(
 
     # 3. Run `python -m build`
     with (
-        activated_conda_env("micromamba", build_env) as build_env_vars,
+        activated_conda_env("micromamba", host_env) as host_env_vars,
         activated_conda_env(
-            "micromamba", host_env, initial_env=build_env_vars, stack=True
-        ) as host_env_vars,
+            "micromamba",
+            build_env,
+            initial_env=host_env_vars,
+            stack=True,
+        ) as build_env_vars,
     ):
         if (
             pyproject_env_vars := pyproject.get("tool", {})
@@ -262,12 +265,12 @@ def cross_build(
             .get("cross-build-env-vars")
         ):
             for key, value in pyproject_env_vars.items():
-                host_env_vars[key] = value.format(prefix=host_env, build_prefix=build_env)
+                build_env_vars[key] = value.format(prefix=host_env, build_prefix=build_env)
         if env_vars:
             if isinstance(env_vars, str):
                 env_vars = json.loads(env_vars)
             for key, value in (env_vars or {}).items():
-                host_env_vars[key] = value.format(prefix=host_env, build_prefix=build_env)
+                build_env_vars[key] = value.format(prefix=host_env, build_prefix=build_env)
         subprocess.run(
             [
                 host_env / "bin" / "python",
