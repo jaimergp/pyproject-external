@@ -19,11 +19,15 @@ from __future__ import annotations
 import atexit
 import json
 import logging
+import os
+import shlex
 import shutil
 import subprocess
 import sys
 import tarfile
+from functools import cache
 from pathlib import Path
+from platform import mac_ver
 from tempfile import TemporaryDirectory
 from typing import Annotated
 
@@ -34,6 +38,7 @@ except ImportError:
 
 import typer
 from build import ProjectBuilder
+from packaging.tags import platform_tags
 
 from .. import (
     Config,
@@ -66,6 +71,27 @@ def create_environment(packages: list[str], name: str, platform: str | None = No
     subprocess.run(command, check=True)
     atexit.register(shutil.rmtree, path.name)
     return Path(path.name)
+
+
+@cache
+def native_platform() -> str:
+    out = subprocess.check_output(["micromamba", "info", "--json"])
+    return json.loads(out)["platform"]
+
+
+def get_platform_tags(platform: str) -> list[str]:
+    if sys.platform.startswith("linux"):
+        if platform == "linux-64":
+            os.environ["_PYTHON_HOST_PLATFORM"] = "linux-x86_64"
+        else:
+            os.environ["_PYTHON_HOST_PLATFORM"] = platform
+    elif sys.platform == "darwin":
+        osx_ver, _, _ = mac_ver()
+        arch = "x86_64" if platform == "osx-64" else "arm64"
+        os.environ["_PYTHON_HOST_PLATFORM"] = f"macosx-{osx_ver[0]}.{osx_ver[1]}-{arch}"
+    tags = list(platform_tags())
+    del os.environ["_PYTHON_HOST_PLATFORM"]
+    return tags
 
 
 def maybe_replace_compiler(package: str, platform: str) -> list[str]:
@@ -236,9 +262,41 @@ def cross_build(
     )
     host_deps.append(f"python={python_version}")
     host_env = create_environment(host_deps, name="host", platform=platform)
+    cmd = [
+        # this has been patched by cross-python in build env,
+        # so it actually runs for target platform
+        str(build_env / "bin" / "python"),
+        "-m",
+        "pip",
+        "install",
+        *[f"--platform={p}" for p in get_platform_tags(platform)],
+        "--only-binary=:all:",
+        f"--target={host_env}",
+        "build",
+        *builder.build_system_requires,
+    ]
+    print(shlex.join(cmd))
+    subprocess.run(
+        cmd,
+        check=True,
+    )
 
+    initial_env = os.environ.copy()
+    # Need these conda-build env vars so compiler activation and cross-python do its magic
+    initial_env["CONDA_BUILD"] = "1"
+    initial_env["CONDA_BUILD_STATE"] = "BUILD"
+    initial_env["BUILD_PREFIX"] = str(build_env)
+    initial_env["PREFIX"] = str(host_env)
+    initial_env["PYTHON"] = str(host_env / "bin" / "python")
+    initial_env["build_platform"] = native_platform()
+    initial_env["target_platform"] = platform
     with (
-        activated_conda_env("micromamba", host_env) as host_env_vars,
+        activated_conda_env(
+            "micromamba",
+            host_env,
+            python=str(build_env / "bin/python"),
+            initial_env=initial_env,
+        ) as host_env_vars,
         activated_conda_env(
             "micromamba",
             build_env,
@@ -260,19 +318,6 @@ def cross_build(
             for key, value in (env_vars or {}).items():
                 build_env_vars[key] = value.format(prefix=host_env, build_prefix=build_env)
 
-        # 2b. Install Python dependencies in host too
-        subprocess.run(
-            [
-                # this has been patched by cross-python in build env, so it actually runs
-                host_env / "bin" / "python",
-                "-m",
-                "pipinstall",
-                "build",
-                *builder.build_system_requires,
-            ],
-            check=True,
-            env=build_env_vars,
-        )
         # 3. Run `python -m build`
         subprocess.run(
             [
@@ -285,5 +330,5 @@ def cross_build(
                 project_dir,
             ],
             check=True,
-            env=host_env_vars,
+            env=build_env_vars,
         )
