@@ -20,7 +20,6 @@ import atexit
 import json
 import logging
 import os
-import shlex
 import shutil
 import subprocess
 import sys
@@ -262,22 +261,20 @@ def cross_build(
     )
     host_deps.append(f"python={python_version}")
     host_env = create_environment(host_deps, name="host", platform=platform)
-    cmd = [
-        # this has been patched by cross-python in build env,
-        # so it actually runs for target platform
-        str(build_env / "bin" / "python"),
-        "-m",
-        "pip",
-        "install",
-        *[f"--platform={p}" for p in get_platform_tags(platform)],
-        "--only-binary=:all:",
-        f"--target={host_env}",
-        "build",
-        *builder.build_system_requires,
-    ]
-    print(shlex.join(cmd))
+    # 2b. Install Python build requirements for host too. We can only use the build env Python
+    # so we need to configure it for the host environment with the adequate platform tags.
     subprocess.run(
-        cmd,
+        [
+            str(build_env / "bin" / "python"),
+            "-m",
+            "pip",
+            "install",
+            *[f"--platform={p}" for p in get_platform_tags(platform)],
+            "--only-binary=:all:",
+            f"--target={host_env}",
+            "build",
+            *builder.build_system_requires,
+        ],
         check=True,
     )
 
