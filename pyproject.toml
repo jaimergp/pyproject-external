@@ -29,7 +29,7 @@ dependencies = [
   "dependency-groups",
   "distro",
   "jsonschema",
-  "packageurl-python>=0.17.1",
+  "packageurl-python>=0.17.6",
   "packaging",
   "pip",
   "platformdirs >=3.10.0",
