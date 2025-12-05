@@ -228,7 +228,7 @@ def cross_build(
     #     [build_env / "bin" / "pip", "install", *builder.get_requires_for_build("sdist")], check=True
     # )
 
-    # 2. Create host environment with host deps
+    # 2a. Create host environment with host deps
     host_deps = external.map_versioned_dependencies(
         "conda-forge",
         categories=["build_host_requires"],
@@ -237,19 +237,6 @@ def cross_build(
     host_deps.append(f"python={python_version}")
     host_env = create_environment(host_deps, name="host", platform=platform)
 
-    subprocess.run(
-        [
-            # this has been patched by cross-python in build env, so it actually runs
-            host_env / "bin" / "python",
-            "-m",
-            "pipinstall",
-            "build",
-            *builder.build_system_requires,
-        ],
-        check=True,
-    )
-
-    # 3. Run `python -m build`
     with (
         activated_conda_env("micromamba", host_env) as host_env_vars,
         activated_conda_env(
@@ -259,6 +246,7 @@ def cross_build(
             stack=True,
         ) as build_env_vars,
     ):
+        # Inject custom environment variables that may be needed for the build process
         if (
             pyproject_env_vars := pyproject.get("tool", {})
             .get("pyproject-external", {})
@@ -271,6 +259,21 @@ def cross_build(
                 env_vars = json.loads(env_vars)
             for key, value in (env_vars or {}).items():
                 build_env_vars[key] = value.format(prefix=host_env, build_prefix=build_env)
+
+        # 2b. Install Python dependencies in host too
+        subprocess.run(
+            [
+                # this has been patched by cross-python in build env, so it actually runs
+                host_env / "bin" / "python",
+                "-m",
+                "pipinstall",
+                "build",
+                *builder.build_system_requires,
+            ],
+            check=True,
+            env=build_env_vars,
+        )
+        # 3. Run `python -m build`
         subprocess.run(
             [
                 host_env / "bin" / "python",
