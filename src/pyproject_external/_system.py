@@ -86,6 +86,7 @@ def activated_conda_env(
     prefix: str | None = None,
     stack: bool = False,
     initial_env: dict[str, str] | None = None,
+    python: str = "python",
 ) -> Iterable[dict[str, str]]:
     """
     Mimics environment activation by generating the activation 'hook' (the code
@@ -159,7 +160,7 @@ def activated_conda_env(
         hookfile.write_text(
             f"{call}{hook}\n"
             # Report the changes in os.environ to a temporary file
-            + f'{call}python{exe} -c "import json, os; print(json.dumps(dict(**os.environ)))" > "{outputfile}"'
+            + f'{call}{python}{exe} -c "import json, os; print(json.dumps(dict(**os.environ)))" > "{outputfile}"'
         )
         with _catch_activation_errors(True):
             subprocess.run([shell, *args, hookfile], check=True, env=environ)
