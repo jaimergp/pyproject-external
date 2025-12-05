@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.logging import RichHandler
 
 from .build import app as _install
+from .cross_build import app as _cross_build
 from .install import app as _build
 from .prepare import app as _prepare
 from .query import app as _query
@@ -26,6 +27,7 @@ app.add_typer(_query)
 app.add_typer(_install)
 app.add_typer(_prepare)
 app.add_typer(_build)
+app.add_typer(_cross_build)
 
 logging.basicConfig(
     level=logging.INFO,

@@ -82,7 +82,10 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
 
 @contextmanager
 def activated_conda_env(
-    package_manager: str, prefix: str | None = None
+    package_manager: str,
+    prefix: str | None = None,
+    stack: bool = False,
+    initial_env: dict[str, str] | None = None,
 ) -> Iterable[dict[str, str]]:
     """
     Mimics environment activation by generating the activation 'hook' (the code
@@ -91,7 +94,7 @@ def activated_conda_env(
     read and applied to the test scope with 'monkeypatch'.
     """
     if not prefix:
-        prefix = os.environ.get("CONDA_PREFIX", sys.prefix)
+        prefix = (initial_env or os.environ).get("CONDA_PREFIX", sys.prefix)
     if sys.platform == "win32":
         shell = "cmd.exe"
         script_ext = "bat"
@@ -112,6 +115,7 @@ def activated_conda_env(
             prefix,
             "--shell",
             shell,
+            *(("--stack",) if stack else ()),
         ]
         deactivate_cmd = [
             package_manager,
@@ -125,6 +129,7 @@ def activated_conda_env(
             "conda",
             f"shell.{shell}",
             "activate",
+            *(("--stack",) if stack else ()),
             prefix,
         ]
         deactivate_cmd = [
@@ -133,6 +138,8 @@ def activated_conda_env(
             "deactivate",
         ]
     elif package_manager == "pixi":
+        if stack:
+            raise ValueError("Pixi does not support stacked activation")
         activate_cmd = [
             "pixi",
             "shell-hook",
@@ -140,7 +147,7 @@ def activated_conda_env(
             "cmd" if shell == "cmd.exe" else shell,
         ]
         deactivate_cmd = []
-    environ = os.environ.copy()
+    environ = (initial_env or os.environ).copy()
     with TemporaryDirectory(prefix="pyproject-external-conda-activator-") as tmp_path:
         tmp_path = Path(tmp_path)
         hookfile = tmp_path / f"__hook.{script_ext}"
@@ -160,7 +167,7 @@ def activated_conda_env(
         # in the activated environment, add/overwrite the ones that do appear.
         activated = json.loads(outputfile.read_text())
 
-    for key in os.environ:
+    for key in environ.copy():
         if key not in activated:
             environ.pop(key)
     for key, value in activated.items():
