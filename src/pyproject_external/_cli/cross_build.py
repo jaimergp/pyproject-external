@@ -24,6 +24,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+from collections.abc import Mapping, Sequence
 from functools import cache
 from pathlib import Path
 from platform import mac_ver
@@ -50,6 +51,19 @@ from ._utils import _handle_ecosystem_and_package_manager, _pyproject_text
 log = logging.getLogger(__name__)
 app = typer.Typer()
 user_config = Config.load_user_config()
+
+
+def conda_build_env(build_prefix: Path, host_prefix: Path, platform: str) -> dict[str, str]:
+    env = os.environ.copy()
+    # Need these conda-build env vars so compiler activation and cross-python do its magic
+    env["CONDA_BUILD"] = "1"
+    env["CONDA_BUILD_STATE"] = "BUILD"
+    env["BUILD_PREFIX"] = str(build_prefix)
+    env["PREFIX"] = str(host_prefix)
+    env["PYTHON"] = str(host_prefix / "bin" / "python")
+    env["build_platform"] = native_platform()
+    env["target_platform"] = platform
+    return env
 
 
 def create_environment(packages: list[str], name: str, platform: str | None = None) -> Path:
@@ -250,23 +264,6 @@ def cross_build(
         ],
         check=True,
     )
-    # Build backends may specify their own dependencies in a dynamic way
-    # e.g. frozenlist ships its own in-tree build backend. This needs
-    # to be checked with the build env's Python so it can import the installed modules.
-    if extra_build_deps := ProjectBuilder(
-        project_dir,
-        python_executable=build_env / "bin" / "python",
-    ).get_requires_for_build("wheel"):
-        subprocess.run(
-            [
-                build_env / "bin" / "python",
-                "-m",
-                "pip",
-                "install",
-                *extra_build_deps,
-            ],
-            check=True,
-        )
 
     # 2a. Create host environment with host deps
     host_deps = external.map_versioned_dependencies(
@@ -276,6 +273,44 @@ def cross_build(
     )
     host_deps.append(f"python={python_version}")
     host_env = create_environment(host_deps, name="host", platform=platform)
+
+    # Now we need to add some more dependencies to build and host.
+    # Build backends may specify their own dependencies in a dynamic way
+    # e.g. frozenlist ships its own in-tree build backend. This needs
+    # to be checked with the build env's Python so it can import the installed modules.
+    with activated_conda_env(
+        "micromamba",
+        build_env,
+        initial_env=conda_build_env(build_env, host_env, platform),
+    ) as build_env_vars:
+
+        def _activated_runner(
+            cmd: Sequence[str],
+            cwd: str | None = None,
+            extra_environ: Mapping[str, str] | None = None,
+        ) -> None:
+            env = build_env_vars.copy()
+            if extra_environ:
+                env.update(extra_environ)
+
+            subprocess.check_call(cmd, cwd=cwd, env=env)
+
+        if extra_build_deps := ProjectBuilder(
+            project_dir,
+            python_executable=build_env / "bin" / "python",
+            runner=_activated_runner,
+        ).get_requires_for_build("wheel"):
+            subprocess.run(
+                [
+                    build_env / "bin" / "python",
+                    "-m",
+                    "pip",
+                    "install",
+                    *extra_build_deps,
+                ],
+                check=True,
+            )
+
     # 2b. Install Python build requirements for host too. We can only use the build env Python
     # so we need to configure it for the host environment with the adequate platform tags.
     subprocess.run(
@@ -289,25 +324,17 @@ def cross_build(
             f"--target={host_env}",
             "build",
             *builder.build_system_requires,
+            *extra_build_deps,
         ],
         check=True,
     )
 
-    initial_env = os.environ.copy()
-    # Need these conda-build env vars so compiler activation and cross-python do its magic
-    initial_env["CONDA_BUILD"] = "1"
-    initial_env["CONDA_BUILD_STATE"] = "BUILD"
-    initial_env["BUILD_PREFIX"] = str(build_env)
-    initial_env["PREFIX"] = str(host_env)
-    initial_env["PYTHON"] = str(host_env / "bin" / "python")
-    initial_env["build_platform"] = native_platform()
-    initial_env["target_platform"] = platform
     with (
         activated_conda_env(
             "micromamba",
             host_env,
             python=str(build_env / "bin/python"),
-            initial_env=initial_env,
+            initial_env=conda_build_env(build_env, host_env, platform),
         ) as host_env_vars,
         activated_conda_env(
             "micromamba",
