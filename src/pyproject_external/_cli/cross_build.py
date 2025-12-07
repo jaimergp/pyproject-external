@@ -251,22 +251,22 @@ def cross_build(
         check=True,
     )
     # Build backends may specify their own dependencies in a dynamic way
-    # e.g. frozenlist ships its own in-tree build backend
-    subprocess.run(
-        [
-            build_env / "bin" / "python",
-            "-m",
-            "pip",
-            "install",
-            # We need to run this with the build env's python so
-            # it can import and run the build backend hooks
-            *ProjectBuilder(
-                project_dir,
-                python_executable=build_env / "bin" / "python",
-            ).get_requires_for_build("wheel"),
-        ],
-        check=True,
-    )
+    # e.g. frozenlist ships its own in-tree build backend. This needs
+    # to be checked with the build env's Python so it can import the installed modules.
+    if extra_build_deps := ProjectBuilder(
+        project_dir,
+        python_executable=build_env / "bin" / "python",
+    ).get_requires_for_build("wheel"):
+        subprocess.run(
+            [
+                build_env / "bin" / "python",
+                "-m",
+                "pip",
+                "install",
+                *extra_build_deps,
+            ],
+            check=True,
+        )
 
     # 2a. Create host environment with host deps
     host_deps = external.map_versioned_dependencies(
