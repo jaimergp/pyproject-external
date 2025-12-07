@@ -39,6 +39,7 @@ except ImportError:
 import typer
 from build import ProjectBuilder
 from packaging.tags import platform_tags
+from packaging.requirements import Requirement
 
 from .. import (
     Config,
@@ -333,7 +334,9 @@ def cross_build(
             f"--target={host_env}",
             "build",
             *builder.build_system_requires,
-            *extra_build_deps,
+            # Skip ninja and cmake because these Python packages only provide binaries, which
+            # should be present in build env already
+            *[dep for dep in extra_build_deps if Requirement(dep).name not in ("ninja", "cmake")],
         ],
         check=True,
     )
