@@ -24,6 +24,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import traceback
 from collections.abc import Mapping, Sequence
 from functools import cache
 from pathlib import Path
@@ -305,21 +306,29 @@ def cross_build(
 
             subprocess.check_call(cmd, cwd=cwd, env=env)
 
-        if extra_build_deps := ProjectBuilder(
-            project_dir,
-            python_executable=build_env / "bin" / "python",
-            runner=_activated_runner,
-        ).get_requires_for_build("wheel"):
-            subprocess.run(
-                [
-                    build_env / "bin" / "python",
-                    "-m",
-                    "pip",
-                    "install",
-                    *extra_build_deps,
-                ],
-                check=True,
+        try:
+            if extra_build_deps := ProjectBuilder(
+                project_dir,
+                python_executable=build_env / "bin" / "python",
+                runner=_activated_runner,
+            ).get_requires_for_build("wheel"):
+                subprocess.run(
+                    [
+                        build_env / "bin" / "python",
+                        "-m",
+                        "pip",
+                        "install",
+                        *extra_build_deps,
+                    ],
+                    check=True,
+                )
+        except Exception as exc:
+            print(
+                "! ERROR: Could not detect additional build backend requirements.",
+                "Build will continue but may fail later!",
+                file=sys.stderr,
             )
+            traceback.print_exception(exc, file=sys.stderr)
 
     # 2b. Install Python build requirements for host too. We can only use the build env Python
     # so we need to configure it for the host environment with the adequate platform tags.
