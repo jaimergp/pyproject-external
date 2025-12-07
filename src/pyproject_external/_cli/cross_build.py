@@ -245,13 +245,28 @@ def cross_build(
             "pip",
             "install",
             "build",
+            # This list is static in TOML and can be passed as is
             *builder.build_system_requires,
         ],
         check=True,
     )
-    # subprocess.run(
-    #     [build_env / "bin" / "pip", "install", *builder.get_requires_for_build("sdist")], check=True
-    # )
+    # Build backends may specify their own dependencies in a dynamic way
+    # e.g. frozenlist ships its own in-tree build backend
+    subprocess.run(
+        [
+            build_env / "bin" / "python",
+            "-m",
+            "pip",
+            "install",
+            # We need to run this with the build env's python so
+            # it can import and run the build backend hooks
+            *ProjectBuilder(
+                project_dir,
+                python_executable=build_env / "bin" / "python",
+            ).get_requires_for_build("wheel"),
+        ],
+        check=True,
+    )
 
     # 2a. Create host environment with host deps
     host_deps = external.map_versioned_dependencies(
