@@ -154,6 +154,14 @@ def maybe_replace_compiler(package: str, platform: str) -> list[str]:
     raise ValueError(f"Native platform not supported: {native_os}")
 
 
+def sysroots(platform: str, version: str) -> list[str]:
+    if platform.startswith("linux-"):
+        return [f"sysroot_{native_platform()}=2.17", f"sysroot_{platform}=2.17"]
+    if platform.startswith("osx-"):
+        return [f"sdkroot_env_{platform}=11.0"]
+    raise ValueError(f"Unrecognized platform: {platform}")
+
+
 @app.command(
     help=__doc__,
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
@@ -248,6 +256,7 @@ def cross_build(
             f"cross-python_{platform}",
             f"python={python_version}",
             "pip",
+            *sysroots(platform, "unused for now")
         ]
     )
 
