@@ -380,7 +380,7 @@ def cross_build(
             meson_args := build_env_vars.get("MESON_ARGS")
         ):
             meson_args = meson_args.replace("--buildtype release ", "")
-            meson_args += f" --pkg-config-path=${host_env}/lib/pkgconfig"
+            meson_args += f" --pkg-config-path={host_env}/lib/pkgconfig"
             meson_args = [f"-Csetup-args={arg}" for arg in meson_args.split()]
             cmd.extend(meson_args)
         cmd.append(project_dir)
