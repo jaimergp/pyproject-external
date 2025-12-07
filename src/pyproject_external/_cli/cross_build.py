@@ -38,8 +38,8 @@ except ImportError:
 
 import typer
 from build import ProjectBuilder
-from packaging.tags import platform_tags
 from packaging.requirements import Requirement
+from packaging.tags import platform_tags
 
 from .. import (
     Config,
@@ -257,7 +257,7 @@ def cross_build(
             f"cross-python_{platform}",
             f"python={python_version}",
             "pip",
-            *sysroots(platform, "unused for now")
+            *sysroots(platform, "unused for now"),
         ]
     )
 
@@ -334,9 +334,7 @@ def cross_build(
             f"--target={host_env}",
             "build",
             *builder.build_system_requires,
-            # Skip ninja and cmake because these Python packages only provide binaries, which
-            # should be present in build env already
-            *[dep for dep in extra_build_deps if Requirement(dep).name not in ("ninja", "cmake")],
+            *extra_build_deps,
         ],
         check=True,
     )
@@ -370,16 +368,24 @@ def cross_build(
                 build_env_vars[key] = value.format(prefix=host_env, build_prefix=build_env)
 
         # 3. Run `python -m build`
+        cmd = [
+            host_env / "bin" / "python",
+            "-m",
+            "build",
+            "--wheel",
+            "--no-isolation",
+            "--skip-dependency-check",
+        ]
+        if "meson-python" in (Requirement(req).name for req in builder.build_system_requires) and (
+            meson_args := build_env_vars.get("MESON_ARGS")
+        ):
+            meson_args = meson_args.replace("--buildtype release ", "")
+            meson_args += f" --pkg-config-path=${host_env}/lib/pkgconfig"
+            meson_args = [f"-Csetup-args={arg}" for arg in meson_args.split()]
+            cmd.extend(meson_args)
+        cmd.append(project_dir)
         subprocess.run(
-            [
-                host_env / "bin" / "python",
-                "-m",
-                "build",
-                "--wheel",
-                "--no-isolation",
-                "--skip-dependency-check",
-                project_dir,
-            ],
+            cmd,
             check=True,
             env=build_env_vars,
         )
