@@ -405,9 +405,20 @@ def cross_build(
             # HACK from https://github.com/conda-forge/scipy-feedstock/blob/511c9db6ae4/recipe/build.sh#L6C1-L10C79
             if (meson_cross_file := (build_env / "meson_cross_file.txt")).exists():
                 original_cross_file = meson_cross_file.read_text()
+                if pyproject["project"]["name"] == "numpy":
+                    # See https://github.com/numpy/numpy/pull/24414
+                    if platform == "osx-arm64":
+                        original_cross_file = original_cross_file.replace(
+                            "[properties]", "properties]\nlongdouble_format = 'IEEE_DOUBLE_LE'"
+                        )
+                    elif platform == "linux-aarch64":
+                        original_cross_file = original_cross_file.replace(
+                            "[properties]", "properties]\nlongdouble_format = 'IEEE_QUAD_LE'"
+                        )
                 meson_cross_file.write_text(
                     f"{original_cross_file}\npython = '{host_env}/bin/python'"
                 )
+
         cmd.append(project_dir)
         subprocess.run(
             cmd,
