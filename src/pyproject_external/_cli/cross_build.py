@@ -407,7 +407,7 @@ def cross_build(
                 # HACK from https://github.com/conda-forge/scipy-feedstock/blob/511c9db6ae4/recipe/build.sh#L6C1-L10C79
                 cross_file_contents = cross_file_contents.replace(
                     "[binaries]",
-                    "[binaries]\npython = '{host_env}/bin/python'",
+                    f"[binaries]\npython = '{host_env}/bin/python'",
                 )
                 if pyproject["project"]["name"] == "numpy":
                     # See https://github.com/numpy/numpy/pull/24414
