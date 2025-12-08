@@ -275,7 +275,7 @@ def cross_build(
         ],
         check=True,
     )
-
+[
     # 2a. Create host environment with host deps
     host_deps = external.map_versioned_dependencies(
         "conda-forge",
@@ -409,11 +409,11 @@ def cross_build(
                     # See https://github.com/numpy/numpy/pull/24414
                     if platform == "osx-arm64":
                         original_cross_file = original_cross_file.replace(
-                            "[properties]", "properties]\nlongdouble_format = 'IEEE_DOUBLE_LE'"
+                            "[properties]", "[properties]\nlongdouble_format = 'IEEE_DOUBLE_LE'"
                         )
                     elif platform == "linux-aarch64":
                         original_cross_file = original_cross_file.replace(
-                            "[properties]", "properties]\nlongdouble_format = 'IEEE_QUAD_LE'"
+                            "[properties]", "[properties]\nlongdouble_format = 'IEEE_QUAD_LE'"
                         )
                 meson_cross_file.write_text(
                     f"{original_cross_file}\npython = '{host_env}/bin/python'"
