@@ -275,7 +275,7 @@ def cross_build(
         ],
         check=True,
     )
-[
+
     # 2a. Create host environment with host deps
     host_deps = external.map_versioned_dependencies(
         "conda-forge",
