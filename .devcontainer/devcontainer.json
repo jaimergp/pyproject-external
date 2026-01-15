@@ -1,0 +1,26 @@
+// For format details, see https://aka.ms/devcontainer.json
+{
+    "name": "Pixi",
+    "image": "ghcr.io/prefix-dev/pixi:latest",
+    "runArgs": ["--platform=linux/amd64"],
+
+    // Configure tool-specific properties.
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "python.testing.pytestArgs": [
+                    "tests"
+                ],
+                "python.testing.unittestEnabled": false,
+                "python.testing.pytestEnabled": true
+            },
+            "extensions": [
+                "charliermarsh.ruff"
+            ]
+        }
+    }
+
+    // Adjust to connect as non-root instead. More info: https://aka.ms/dev-containers-non-root.
+    // "remoteUser": "root",
+
+}
