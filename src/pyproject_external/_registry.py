@@ -40,12 +40,7 @@ from ._url import DepURL, validate_version_str
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Any, ClassVar, Literal, TypeVar
-
-    try:
-        from typing import Self
-    except ImportError:  # py 3.11+ required for Self
-        from typing_extensions import Self
+    from typing import Any, ClassVar, Literal, Self, TypeVar
 
     from jsonschema import Validator
 

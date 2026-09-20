@@ -18,10 +18,7 @@ except ImportError:
     import tomli as tomllib
 
 if TYPE_CHECKING:
-    try:
-        from typing import Self
-    except ImportError:  # py 3.11+ required for Self
-        from typing_extensions import Self
+    from typing import Self
 
 from platformdirs import user_config_dir
 

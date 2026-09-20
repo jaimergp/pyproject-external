@@ -19,12 +19,7 @@ from packaging.version import InvalidVersion, Version
 from ._exceptions import UnsupportedSpecError, VersionConstraintNotSupportedError
 
 if TYPE_CHECKING:
-    from typing import AnyStr, ClassVar
-
-    try:
-        from typing import Self
-    except ImportError:
-        from typing_extensions import Self
+    from typing import AnyStr, ClassVar, Self
 
 log = getLogger(__name__)
 
