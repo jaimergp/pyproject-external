@@ -26,7 +26,7 @@ def download_sdist(package_name: str, sdist_dir: str | Path, version: str = "") 
             url = str(item[0])
 
     if url is None:
-        raise RuntimeError(f"No sdist for package {package_name} found.")
+        raise RuntimeError(f"No sdist for package '{package_name}' found.")
 
     fname_sdist = url.split("/")[-1]
     urllib.request.urlretrieve(url, sdist_dir / fname_sdist)
