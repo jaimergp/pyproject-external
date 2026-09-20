@@ -105,7 +105,6 @@ class _FromPathOrUrlOrDefault:
 
     @classmethod
     def from_url(cls, url: str) -> Self:
-        print(url)
         r = requests.get(url)
         r.raise_for_status()
         return cls(r.json())
