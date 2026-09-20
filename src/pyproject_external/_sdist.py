@@ -63,11 +63,21 @@ def append_external_metadata(
     package_name: str,
     patches_dir: str | Path = "external_metadata",
 ) -> None:
+    """
+    Given a `patches_dir`, find a .toml file named after `package_name`
+    and append it to `fname_sdist` if the contents are not present yet.
+
+    The .toml file SHOULD be name-normalized (underscores as dashes, lowercase).
+    """
     pyproject_toml = Path(fname_sdist)
     pyproject_toml_contents = pyproject_toml.read_text()
-    external_metadata = Path(patches_dir, f"{package_name}.toml").read_text()
-    if external_metadata not in pyproject_toml_contents:
-        pyproject_toml.write_text(pyproject_toml_contents + "\n" + external_metadata)
+    for filename in (package_name, package_name.replace("_", "-").lower()):
+        external_metadata_path = Path(patches_dir, f"{filename}.toml")
+        if external_metadata_path.is_file():
+            external_metadata = external_metadata_path.read_text()
+            if external_metadata not in pyproject_toml_contents:
+                pyproject_toml.write_text(pyproject_toml_contents + "\n" + external_metadata)
+                break
 
 
 def apply_patches(
