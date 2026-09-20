@@ -35,10 +35,10 @@ dependencies = [
   "typer>=0.21.1,<0.22",
   "click>=8.3.1,<9",
   "typing-extensions>=4.15.0,<5 ; python_full_version < '3.11'",
-  "packaging>=25.0,<26",
+  "packaging>=26.0,<27",
   "packageurl-python>=0.17.6,<0.18",
   "platformdirs>=4.5.1,<5",
-  "pypi-json>=0.4.0,<0.5",
+  "pypi-json>=0.5.0,<0.6",
   "dependency-groups>=1.3.1,<2",
 ]
 dynamic = ["version"]
