@@ -66,4 +66,4 @@ def prepare(
         )
         apply_patches(package_name, fname_pyproject_toml.parent, patches_dir=patches_dir)
         Path(out_dir).mkdir(parents=True, exist_ok=True)
-        create_new_sdist(fname_sdist, tmp, out_dir or os.getcwd())
+        create_new_sdist(fname_sdist, fname_pyproject_toml.parent, out_dir or os.getcwd())
