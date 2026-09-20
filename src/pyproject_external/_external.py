@@ -30,12 +30,7 @@ except ImportError:
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Any, Literal, TypeAlias
-
-    try:
-        from typing import Self
-    except ImportError:  # py 3.11+ required for Self
-        from typing_extensions import Self
+    from typing import Any, Literal, Self, TypeAlias
 
     ExternalKeys: TypeAlias = Literal[
         "build_requires",

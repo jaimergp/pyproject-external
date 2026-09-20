@@ -15,14 +15,14 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
   "pip>=25.3,<26",
   "build>=1.4.0,<2",
@@ -30,11 +30,9 @@ dependencies = [
   "jsonschema>=4.26.0,<5",
   "distro>=1.9.0,<2",
   "rich>=14.2.0,<15",
-  "tomli ; python_full_version < '3.11'",
   "tomli-w>=1.2.0,<2",
   "typer>=0.21.1,<0.22",
   "click>=8.3.1,<9",
-  "typing-extensions>=4.15.0,<5 ; python_full_version < '3.11'",
   "packaging>=26.0,<27",
   "packageurl-python>=0.17.6,<0.18",
   "platformdirs>=4.5.1,<5",
@@ -64,14 +62,14 @@ pre-commit = ">=4.5.1,<5"
 [tool.pixi.feature.pre-commit.tasks]
 pre-commit = "pre-commit"
 
-[tool.pixi.feature.py310.dependencies]
-python = "3.10.*"
 [tool.pixi.feature.py311.dependencies]
 python = "3.11.*"
 [tool.pixi.feature.py312.dependencies]
 python = "3.12.*"
 [tool.pixi.feature.py313.dependencies]
 python = "3.13.*"
+[tool.pixi.feature.py314.dependencies]
+python = "3.14.*"
 
 [tool.pixi.feature.test.dependencies]
 pytest = ">=9.0.2,<10"
@@ -83,10 +81,10 @@ test = "pytest"
 test-cov = "pytest --cov=pyproject_external --cov-report xml:cov.xml"
 
 [tool.pixi.environments]
-test-py310 = ["test", "py310"]
 test-py311 = ["test", "py311"]
 test-py312 = ["test", "py312"]
 test-py313 = ["test", "py313"]
+test-py314 = ["test", "py314"]
 pre-commit = ["pre-commit"]
 
 [tool.ruff]
