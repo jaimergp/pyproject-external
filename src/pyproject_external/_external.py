@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     ]
 
 from ._exceptions import ExternalTableNotFoundError
-from ._registry import Command, Ecosystems, MappedSpec, Mapping, Registry
+from ._registry import Command, MappedSpec, Mapping, Registry
 from ._url import DepURL
 
 log = logging.getLogger(__name__)
@@ -378,13 +378,7 @@ class External:
         with_version: bool = True,
         return_type: Literal["specs", "install_commands", "query_commands"] = "specs",
     ) -> list[str] | list[list[str]]:
-        ecosystem_names = list(Ecosystems.from_default().iter_names())
-        if ecosystem not in ecosystem_names:
-            raise ValueError(
-                f"Ecosystem '{ecosystem}' is not a valid name. "
-                f"Choose one of: {', '.join(ecosystem_names)}"
-            )
-        mapping: Mapping = Mapping.from_default(ecosystem)
+        mapping = Mapping.from_name(ecosystem)
         package_manager_names = [mgr["name"] for mgr in mapping.package_managers]
         if package_manager is None:
             if package_manager_names == 1:
