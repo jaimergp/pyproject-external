@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     ]
 
 from ._exceptions import ExternalTableNotFoundError
-from ._registry import Command, Ecosystems, MappedSpec, Mapping, Registry
+from ._registry import Command, MappedSpec, Mapping, Registry
 from ._url import DepURL
 
 log = logging.getLogger(__name__)
