@@ -214,7 +214,7 @@ def test_schema_validation_with_schema_path(tmp_path):
 
 @pytest.mark.parametrize("mapping", sorted(default_ecosystems().iter_names()))
 def test_mappings(mapping):
-    Mapping.from_default(mapping).validate()
+    Mapping.from_name(mapping).validate()
 
 
 @pytest.mark.parametrize(

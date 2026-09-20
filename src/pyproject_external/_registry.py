@@ -26,7 +26,6 @@ from ._constants import (
     DEFAULT_ECOSYSTEMS_SCHEMA_URL,
     DEFAULT_ECOSYSTEMS_URL,
     DEFAULT_MAPPING_SCHEMA_URL,
-    DEFAULT_MAPPING_URL_TEMPLATE,
     DEFAULT_REGISTRY_SCHEMA_URL,
     DEFAULT_REGISTRY_URL,
 )
@@ -91,11 +90,8 @@ class _FromPathOrUrlOrDefault:
     default_source: str
 
     @classmethod
-    def from_default(cls, *args) -> Self:
-        if "{}" in cls.default_source:
-            default_source = cls.default_source.format(*args)
-        else:
-            default_source = cls.default_source
+    def from_default(cls) -> Self:
+        default_source = cls.default_source
         if default_source.startswith(("http://", "https://")):
             return cls.from_url(default_source)
         return cls.from_path(default_source)
@@ -109,6 +105,7 @@ class _FromPathOrUrlOrDefault:
 
     @classmethod
     def from_url(cls, url: str) -> Self:
+        print(url)
         r = requests.get(url)
         r.raise_for_status()
         return cls(r.json())
@@ -273,7 +270,22 @@ class Mapping(UserDict, _Validated, _FromPathOrUrlOrDefault):
     """
 
     default_schema: str = DEFAULT_MAPPING_SCHEMA_URL
-    default_source: str = DEFAULT_MAPPING_URL_TEMPLATE
+    default_source: None = None
+
+    @classmethod
+    def from_default(cls) -> Self:
+        raise NotImplementedError("Use .from_name(name)")
+
+    @classmethod
+    def from_name(cls, name: str) -> Self:
+        ecosystems = Ecosystems.from_default()
+        mapping = ecosystems.get_mapping(name, default=None)
+        if mapping is None:
+            raise ValueError(
+                f"Ecosystem '{name}' is not a valid name. "
+                f"Choose one of: {', '.join(sorted(ecosystems.iter_names()))}"
+            )
+        return mapping
 
     @property
     def name(self) -> str | None:
@@ -822,4 +834,4 @@ def default_ecosystems() -> Ecosystems:
 def remote_mapping(ecosystem_or_url: str) -> Mapping:
     if ecosystem_or_url.startswith(("http://", "https://")):
         return Mapping.from_url(ecosystem_or_url)
-    return Mapping.from_default(ecosystem_or_url)
+    return Mapping.from_name(ecosystem_or_url)
