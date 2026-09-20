@@ -48,20 +48,25 @@ class Config:
     preferred_ecosystem: str = ""
     #: Which package manager to use by default on this system, instead of autodetected.
     preferred_package_manager: str = ""
+    #: Which mapping to use by default on this system, instead of autodetected.
+    preferred_mapping: str = ""
     unsupported_constraints_behaviour: UnsupportedConstraintsBehaviour = (
         UnsupportedConstraintsBehaviour.WARN
     )
 
     def __post_init__(self):
-        if not isinstance(self.preferred_package_manager, str):
+        for attr in (
+            "preferred_ecosystem",
+            "preferred_package_manager",
+            "preferred_mapping",
+        ):
+            if not isinstance(getattr(self, attr), str):
+                raise ValueError(f"'{attr}' must be str, but found {getattr(self, attr)}.")
+        if self.preferred_mapping and self.preferred_ecosystem:
             raise ValueError(
-                "'preferred_package_manager' must be str, but found "
-                f"{self.preferred_package_manager}."
+                "'preferred_mapping' cannot be set with 'preferred_ecosystem' too. Pick one."
             )
-        if not isinstance(self.preferred_ecosystem, str):
-            raise ValueError(
-                f"'preferred_ecosystem' must be str, but found {self.preferred_ecosystem}."
-            )
+
         try:
             self.unsupported_constraints_behaviour = UnsupportedConstraintsBehaviour(
                 self.unsupported_constraints_behaviour

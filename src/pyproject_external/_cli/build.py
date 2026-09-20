@@ -30,7 +30,7 @@ from .. import (
 )
 from .._constants import PythonInstallers, UnsupportedConstraintsBehaviour
 from .._exceptions import UnsupportedSpecError
-from ._utils import NotOnCIError, _handle_ecosystem_and_package_manager, _pyproject_text
+from ._utils import NotOnCIError, _handle_ecosystem_discovery, _pyproject_text
 
 log = logging.getLogger(__name__)
 app = typer.Typer()
@@ -64,6 +64,18 @@ def build(
             "instead of the auto-detected one."
         ),
     ] = user_config.preferred_package_manager or "",
+    prepend_mapping: Annotated[
+        str,
+        typer.Option(
+            help="Inject additional mapping information at the beginning of the main mapping file."
+        ),
+    ] = "",
+    extend_mapping: Annotated[
+        str,
+        typer.Option(
+            help="Inject additional mapping information at the end of the main mapping file."
+        ),
+    ] = "",
     outdir: Annotated[
         str | None,
         typer.Option(help="Output directory for the wheel. Defaults to working directory"),
@@ -96,8 +108,12 @@ def build(
     external: External = External.from_pyproject_data(pyproject)
     external.validate(raises=False)
 
-    ecosystem, package_manager = _handle_ecosystem_and_package_manager(ecosystem, package_manager)
-
+    ecosystem, package_manager = _handle_ecosystem_discovery(
+        ecosystem,
+        package_manager,
+        prepend=prepend_mapping,
+        append=extend_mapping,
+    )
     try:
         install_external_cmds = external.install_commands(
             ecosystem,

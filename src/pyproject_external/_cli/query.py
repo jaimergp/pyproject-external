@@ -25,7 +25,7 @@ from .. import (
 )
 from .._constants import UnsupportedConstraintsBehaviour
 from .._exceptions import UnsupportedSpecError
-from ._utils import _handle_ecosystem_and_package_manager, _pyproject_text
+from ._utils import _handle_ecosystem_discovery, _pyproject_text
 
 log = logging.getLogger(__name__)
 app = typer.Typer()
@@ -59,6 +59,18 @@ def query(
             "are installed."
         ),
     ] = user_config.preferred_package_manager or "",
+    prepend_mapping: Annotated[
+        str,
+        typer.Option(
+            help="Inject additional mapping information at the beginning of the main mapping file."
+        ),
+    ] = "",
+    extend_mapping: Annotated[
+        str,
+        typer.Option(
+            help="Inject additional mapping information at the end of the main mapping file."
+        ),
+    ] = "",
     unsupported_constraints_behaviour: Annotated[
         UnsupportedConstraintsBehaviour,
         typer.Option(
@@ -74,8 +86,12 @@ def query(
     external: External = External.from_pyproject_data(pyproject)
     external.validate(raises=False)
 
-    ecosystem, package_manager = _handle_ecosystem_and_package_manager(ecosystem, package_manager)
-
+    ecosystem, package_manager = _handle_ecosystem_discovery(
+        ecosystem,
+        package_manager,
+        prepend=prepend_mapping,
+        append=extend_mapping,
+    )
     try:
         query_commands = external.query_commands(
             ecosystem,
