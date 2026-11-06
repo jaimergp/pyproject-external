@@ -20,6 +20,7 @@ from tempfile import TemporaryDirectory
 import distro
 
 from ._registry import default_ecosystems, remote_mapping
+from ._utils import find_executable
 
 log = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
 
     # Fallback to the conda ecosystem if available, even if no active environments are found
     for name in ("conda", "pixi", "mamba", "micromamba"):
-        if shutil.which(name):
+        if find_executable(name) != name:
             return "conda-forge", name
 
     raise ValueError(f"No support for platform '{distro_id}' yet!")
@@ -140,7 +141,14 @@ def activated_conda_env(
             "cmd" if shell == "cmd.exe" else shell,
         ]
         deactivate_cmd = []
+    if activate_cmd:
+        activate_cmd[0] = find_executable(activate_cmd[0])
+    if deactivate_cmd:
+        deactivate_cmd[0] = find_executable(deactivate_cmd[0])
     environ = os.environ.copy()
+    # DEBUG
+    print(activate_cmd)
+    print(deactivate_cmd)
     with TemporaryDirectory(prefix="pyproject-external-conda-activator-") as tmp_path:
         tmp_path = Path(tmp_path)
         hookfile = tmp_path / f"__hook.{script_ext}"
@@ -148,6 +156,8 @@ def activated_conda_env(
         # real 'activate' command
         with _catch_activation_errors(True):
             hook = subprocess.check_output(activate_cmd, text=True, env=environ)
+        # DEBUG
+        print(hook)
         outputfile = tmp_path / "__output.json"
         hookfile.write_text(
             f"{call}{hook}\n"
@@ -187,7 +197,7 @@ def activated_conda_env(
 def _catch_activation_errors(activate: bool = True) -> Iterable[None]:
     try:
         yield
-    except subprocess.CalledProcessError as exc:
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         raise RuntimeError(
             f"Could not {'activate' if activate else 'deactivate'} conda environment!\n"
             f"Return code: {exc.returncode}\n"

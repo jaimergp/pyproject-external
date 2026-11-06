@@ -25,6 +25,7 @@ from .. import (
 )
 from .._constants import UnsupportedConstraintsBehaviour
 from .._exceptions import UnsupportedSpecError
+from .._utils import find_executable
 from ._utils import _handle_ecosystem_and_package_manager, _pyproject_text
 
 log = logging.getLogger(__name__)
@@ -97,7 +98,9 @@ def query(
     for query_command in query_commands:
         try:
             log.debug("Query command: %s", query_command)
-            p = subprocess.run(query_command.render(), capture_output=True, text=True)
+            rendered_cmd = query_command.render()
+            rendered_cmd[0] = find_executable(rendered_cmd[0])
+            p = subprocess.run(rendered_cmd, capture_output=True, text=True)
             log.debug("Stdout: %s", p.stdout)
             log.debug("Stderr: %s", p.stderr)
             p.check_returncode()

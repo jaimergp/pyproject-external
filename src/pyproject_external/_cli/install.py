@@ -28,6 +28,7 @@ from .. import (
 )
 from .._constants import PythonInstallers, UnsupportedConstraintsBehaviour
 from .._exceptions import UnsupportedSpecError
+from .._utils import find_executable
 from ._utils import NotOnCIError, _handle_ecosystem_and_package_manager, _pyproject_text
 
 log = logging.getLogger(__name__)
@@ -116,13 +117,16 @@ def install(
     try:
         # 1. Install external dependencies
         for install_external_cmd in install_external_cmds:
-            subprocess.run(install_external_cmd.render(), check=True)
+            rendered_cmd = install_external_cmd.render()
+            rendered_cmd[0] = find_executable(rendered_cmd[0])
+            subprocess.run(rendered_cmd, check=True)
         # 2. Build wheel
         with (
             activated_conda_env(package_manager=package_manager)
             if ecosystem == "conda-forge"
             else nullcontext(os.environ) as env
         ):
+            install_cmd[0] = find_executable(install_cmd[0])
             subprocess.run([*install_cmd, *unknown_args.args, package], check=True, env=env)
     except subprocess.CalledProcessError as exc:
         sys.exit(exc.returncode)  # avoid unnecessary typer pretty traceback
