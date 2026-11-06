@@ -146,6 +146,9 @@ def activated_conda_env(
     if deactivate_cmd:
         deactivate_cmd[0] = find_executable(deactivate_cmd[0])
     environ = os.environ.copy()
+    # DEBUG
+    print(activate_cmd)
+    print(deactivate_cmd)
     with TemporaryDirectory(prefix="pyproject-external-conda-activator-") as tmp_path:
         tmp_path = Path(tmp_path)
         hookfile = tmp_path / f"__hook.{script_ext}"
@@ -153,6 +156,8 @@ def activated_conda_env(
         # real 'activate' command
         with _catch_activation_errors(True):
             hook = subprocess.check_output(activate_cmd, text=True, env=environ)
+        # DEBUG
+        print(hook)
         outputfile = tmp_path / "__output.json"
         hookfile.write_text(
             f"{call}{hook}\n"
@@ -192,7 +197,7 @@ def activated_conda_env(
 def _catch_activation_errors(activate: bool = True) -> Iterable[None]:
     try:
         yield
-    except subprocess.CalledProcessError as exc:
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         raise RuntimeError(
             f"Could not {'activate' if activate else 'deactivate'} conda environment!\n"
             f"Return code: {exc.returncode}\n"
