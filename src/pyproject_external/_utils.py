@@ -1,3 +1,4 @@
+import os
 import shutil
 
 
@@ -18,5 +19,11 @@ def find_executable(name: str) -> str:
     if not name.lower().endswith(".exe"):
         if exe_path := shutil.which(f"{name}.exe"):
             return exe_path
+
+    # 3. Some package managers are shell-initialized instead of featuring an executable in PATH
+    if name == "conda" and os.path.isfile(os.environ.get("CONDA_EXE", "")):
+        return os.environ.get("CONDA_EXE")
+    if name in ("mamba", "micromamba") and os.path.isfile(os.environ.get("MAMBA_EXE", "")):
+        return os.environ.get("MAMBA_EXE")
 
     return name
