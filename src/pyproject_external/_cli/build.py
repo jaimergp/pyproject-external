@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -115,7 +116,7 @@ def build(
             with_version=False,
         )
     build_cmd = [
-        python,
+        shutil.which(python) or python,
         "-m",
         "build",
         "--wheel",
@@ -128,7 +129,9 @@ def build(
     try:
         # 1. Install external dependencies
         for external_cmd in install_external_cmds:
-            subprocess.run(external_cmd.render(), check=True)
+            rendered_cmd = external_cmd.render()
+            rendered_cmd[0] = shutil.which(rendered_cmd[0]) or rendered_cmd[0]
+            subprocess.run(rendered_cmd, check=True)
         # 2. Build wheel
         with (
             activated_conda_env(package_manager=package_manager)

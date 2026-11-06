@@ -140,6 +140,11 @@ def activated_conda_env(
             "cmd" if shell == "cmd.exe" else shell,
         ]
         deactivate_cmd = []
+    # Try to find the executable in PATH first so .exe is added when needed on Windows
+    if activate_cmd:
+        activate_cmd[0] = shutil.which(activate_cmd[0]) or activate_cmd[0]
+    if deactivate_cmd:
+        deactivate_cmd[0] = shutil.which(deactivate_cmd[0]) or deactivate_cmd[0]
     environ = os.environ.copy()
     with TemporaryDirectory(prefix="pyproject-external-conda-activator-") as tmp_path:
         tmp_path = Path(tmp_path)
