@@ -20,6 +20,7 @@ from tempfile import TemporaryDirectory
 import distro
 
 from ._registry import default_ecosystems, remote_mapping
+from ._utils import find_executable
 
 log = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
 
     # Fallback to the conda ecosystem if available, even if no active environments are found
     for name in ("conda", "pixi", "mamba", "micromamba"):
-        if shutil.which(name):
+        if find_executable(name) != name:
             return "conda-forge", name
 
     raise ValueError(f"No support for platform '{distro_id}' yet!")
@@ -140,11 +141,10 @@ def activated_conda_env(
             "cmd" if shell == "cmd.exe" else shell,
         ]
         deactivate_cmd = []
-    # Try to find the executable in PATH first so .exe is added when needed on Windows
     if activate_cmd:
-        activate_cmd[0] = shutil.which(activate_cmd[0]) or activate_cmd[0]
+        activate_cmd[0] = find_executable(activate_cmd[0])
     if deactivate_cmd:
-        deactivate_cmd[0] = shutil.which(deactivate_cmd[0]) or deactivate_cmd[0]
+        deactivate_cmd[0] = find_executable(deactivate_cmd[0])
     environ = os.environ.copy()
     with TemporaryDirectory(prefix="pyproject-external-conda-activator-") as tmp_path:
         tmp_path = Path(tmp_path)

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import os
-import shutil
 import subprocess
 import sys
 import tarfile
@@ -31,6 +30,7 @@ from .. import (
 )
 from .._constants import PythonInstallers, UnsupportedConstraintsBehaviour
 from .._exceptions import UnsupportedSpecError
+from .._utils import find_executable
 from ._utils import NotOnCIError, _handle_ecosystem_and_package_manager, _pyproject_text
 
 log = logging.getLogger(__name__)
@@ -116,7 +116,7 @@ def build(
             with_version=False,
         )
     build_cmd = [
-        shutil.which(python) or python,
+        find_executable(python),
         "-m",
         "build",
         "--wheel",
@@ -130,7 +130,7 @@ def build(
         # 1. Install external dependencies
         for external_cmd in install_external_cmds:
             rendered_cmd = external_cmd.render()
-            rendered_cmd[0] = shutil.which(rendered_cmd[0]) or rendered_cmd[0]
+            rendered_cmd[0] = find_executable(rendered_cmd[0])
             subprocess.run(rendered_cmd, check=True)
         # 2. Build wheel
         with (

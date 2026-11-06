@@ -7,7 +7,6 @@ Query whether the external dependencies of a package are already satisfied.
 from __future__ import annotations
 
 import logging
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -26,6 +25,7 @@ from .. import (
 )
 from .._constants import UnsupportedConstraintsBehaviour
 from .._exceptions import UnsupportedSpecError
+from .._utils import find_executable
 from ._utils import _handle_ecosystem_and_package_manager, _pyproject_text
 
 log = logging.getLogger(__name__)
@@ -99,7 +99,7 @@ def query(
         try:
             log.debug("Query command: %s", query_command)
             rendered_cmd = query_command.render()
-            rendered_cmd[0] = shutil.which(rendered_cmd[0]) or rendered_cmd[0]
+            rendered_cmd[0] = find_executable(rendered_cmd[0])
             p = subprocess.run(rendered_cmd, capture_output=True, text=True)
             log.debug("Stdout: %s", p.stdout)
             log.debug("Stderr: %s", p.stderr)

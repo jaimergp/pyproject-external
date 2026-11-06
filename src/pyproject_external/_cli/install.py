@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import os
-import shutil
 import subprocess
 import sys
 from contextlib import nullcontext
@@ -29,6 +28,7 @@ from .. import (
 )
 from .._constants import PythonInstallers, UnsupportedConstraintsBehaviour
 from .._exceptions import UnsupportedSpecError
+from .._utils import find_executable
 from ._utils import NotOnCIError, _handle_ecosystem_and_package_manager, _pyproject_text
 
 log = logging.getLogger(__name__)
@@ -118,7 +118,7 @@ def install(
         # 1. Install external dependencies
         for install_external_cmd in install_external_cmds:
             rendered_cmd = install_external_cmd.render()
-            rendered_cmd[0] = shutil.which(rendered_cmd[0]) or rendered_cmd[0]
+            rendered_cmd[0] = find_executable(rendered_cmd[0])
             subprocess.run(rendered_cmd, check=True)
         # 2. Build wheel
         with (
@@ -126,7 +126,7 @@ def install(
             if ecosystem == "conda-forge"
             else nullcontext(os.environ) as env
         ):
-            install_cmd[0] = shutil.which(install_cmd[0]) or install_cmd[0]
+            install_cmd[0] = find_executable(install_cmd[0])
             subprocess.run([*install_cmd, *unknown_args.args, package], check=True, env=env)
     except subprocess.CalledProcessError as exc:
         sys.exit(exc.returncode)  # avoid unnecessary typer pretty traceback
