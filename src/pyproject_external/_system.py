@@ -51,11 +51,9 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
         for tool in ("conda", "pixi", "mamba"):
             if exe := os.environ.get(f"{tool.upper()}_EXE"):
                 exe = Path(exe)
-                if exe.is_file():
-                    if exe.stem == "micromamba":
-                        return "conda-forge", "micromamba"
-                    return "conda-forge", tool
-                print(f"! {tool.upper()}_EXE points to missing file: {exe}. Siblings in that directory: {list(exe.parent.glob('*'))}")
+                if exe.stem == "micromamba":
+                    return "conda-forge", "micromamba"
+                return "conda-forge", tool
 
     platform_system = platform.system()
     if platform_system == "Linux":
@@ -66,21 +64,21 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
                 return name, mapping.package_managers[0]["name"]
         raise ValueError(f"No support for platform '{distro_id}' yet!")
 
-    if platform_system == "Darwin":
-        if shutil.which("brew"):
-            return "homebrew", "brew"
-        raise ValueError("Only homebrew is supported on macOS!")
-
-    if platform_system == "Windows" or platform_system.lower().startswith(("cygwin", "msys")):
-        if shutil.which("vcpkg"):
-            return "vcpkg", "vcpkg"  # TODO: Determine which one has the most complete mapping
-
     # Fallback to the conda ecosystem if available, even if no active environments are found
     for name in ("conda", "pixi", "mamba", "micromamba"):
         if find_executable(name) != name:
             return "conda-forge", name
 
-    raise ValueError(f"Could not find any suitable package managers for platform '{distro_id}'!")
+    if platform_system == "Darwin":
+        if shutil.which("brew"):
+            return "homebrew", "brew"
+
+    if platform_system == "Windows" or platform_system.lower().startswith(("cygwin", "msys")):
+        for executable_and_ecosystem in ("winget", "scoop", "vcpkg"):
+            if shutil.which(executable_and_ecosystem):
+                return executable_and_ecosystem, executable_and_ecosystem
+
+    raise ValueError(f"Could not find any package managers for platform '{platform_system}'!")
 
 
 @contextmanager
