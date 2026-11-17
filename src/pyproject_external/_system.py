@@ -55,6 +55,7 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
                     if exe.stem == "micromamba":
                         return "conda-forge", "micromamba"
                     return "conda-forge", tool
+                print(f"! {tool.upper()}_EXE points to missing file: {exe}")
 
     platform_system = platform.system()
     if platform_system == "Linux":
@@ -71,14 +72,15 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
         raise ValueError("Only homebrew is supported on macOS!")
 
     if platform_system == "Windows" or platform_system.lower().startswith(("cygwin", "msys")):
-        return "vcpkg", "vcpkg"  # TODO: Determine which one has the most complete mapping
+        if shutil.which("vcpkg"):
+            return "vcpkg", "vcpkg"  # TODO: Determine which one has the most complete mapping
 
     # Fallback to the conda ecosystem if available, even if no active environments are found
     for name in ("conda", "pixi", "mamba", "micromamba"):
         if find_executable(name) != name:
             return "conda-forge", name
 
-    raise ValueError(f"No support for platform '{distro_id}' yet!")
+    raise ValueError(f"Could not find any suitable package managers for platform '{distro_id}'!")
 
 
 @contextmanager
