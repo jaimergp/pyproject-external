@@ -55,7 +55,7 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
                     if exe.stem == "micromamba":
                         return "conda-forge", "micromamba"
                     return "conda-forge", tool
-                print(f"! {tool.upper()}_EXE points to missing file: {exe}")
+                print(f"! {tool.upper()}_EXE points to missing file: {exe}. Siblings in that directory: {list(exe.parent.glob('*'))}")
 
     platform_system = platform.system()
     if platform_system == "Linux":
