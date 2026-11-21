@@ -7,6 +7,7 @@ High-level API to handle `[external]` metadata tables.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from dataclasses import asdict, dataclass, field, fields
@@ -474,6 +475,17 @@ class External:
         with_version: bool,
         required: bool,
     ) -> list[MappedSpec]:
+        # Let overrides take precedence
+        # TODO: Experimental, undocumented approach. Missing per-'specs_type' overrides
+        if overrides_str := os.environ.get("_PYPROJECT_EXTERNAL_MAPPING_OVERRIDES"):
+            for purl, overrides in json.loads(overrides_str):
+                if purl == dep_str:
+                    if isinstance(overrides, str) and overrides:
+                        overrides = [overrides]
+                    if not overrides:
+                        overrides = []
+                    return [MappedSpec(name=override, source=dep_str) for override in overrides]
+
         for specs in mapping.iter_specs_by_id(
             dep_str,
             specs_type=specs_type,
