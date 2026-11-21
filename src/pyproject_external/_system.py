@@ -20,6 +20,7 @@ from tempfile import TemporaryDirectory
 import distro
 
 from ._registry import default_ecosystems, remote_mapping
+from ._utils import find_executable
 
 log = logging.getLogger(__name__)
 
@@ -50,10 +51,9 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
         for tool in ("conda", "pixi", "mamba"):
             if exe := os.environ.get(f"{tool.upper()}_EXE"):
                 exe = Path(exe)
-                if exe.is_file():
-                    if exe.stem == "micromamba":
-                        return "conda-forge", "micromamba"
-                    return "conda-forge", tool
+                if exe.stem == "micromamba":
+                    return "conda-forge", "micromamba"
+                return "conda-forge", tool
 
     platform_system = platform.system()
     if platform_system == "Linux":
@@ -64,20 +64,21 @@ def detect_ecosystem_and_package_manager() -> tuple[str, str]:
                 return name, mapping.package_managers[0]["name"]
         raise ValueError(f"No support for platform '{distro_id}' yet!")
 
+    # Fallback to the conda ecosystem if available, even if no active environments are found
+    for name in ("conda", "pixi", "mamba", "micromamba"):
+        if find_executable(name) != name:
+            return "conda-forge", name
+
     if platform_system == "Darwin":
         if shutil.which("brew"):
             return "homebrew", "brew"
-        raise ValueError("Only homebrew is supported on macOS!")
 
     if platform_system == "Windows" or platform_system.lower().startswith(("cygwin", "msys")):
-        return "vcpkg", "vcpkg"  # TODO: Determine which one has the most complete mapping
+        for executable_and_ecosystem in ("winget", "scoop", "vcpkg"):
+            if shutil.which(executable_and_ecosystem):
+                return executable_and_ecosystem, executable_and_ecosystem
 
-    # Fallback to the conda ecosystem if available, even if no active environments are found
-    for name in ("conda", "pixi", "mamba", "micromamba"):
-        if shutil.which(name):
-            return "conda-forge", name
-
-    raise ValueError(f"No support for platform '{distro_id}' yet!")
+    raise ValueError(f"Could not find any package managers for platform '{platform_system}'!")
 
 
 @contextmanager
@@ -92,6 +93,11 @@ def activated_conda_env(
     """
     if not prefix:
         prefix = os.environ.get("CONDA_PREFIX", sys.prefix)
+    if not Path(prefix, "conda-meta", "history").is_file():
+        raise ValueError(
+            f"{prefix} is not a conda environment. "
+            "Please activate the correct environment or define CONDA_PREFIX=<path>."
+        )
     if sys.platform == "win32":
         shell = "cmd.exe"
         script_ext = "bat"
@@ -140,6 +146,10 @@ def activated_conda_env(
             "cmd" if shell == "cmd.exe" else shell,
         ]
         deactivate_cmd = []
+    if activate_cmd:
+        activate_cmd[0] = find_executable(activate_cmd[0])
+    if deactivate_cmd:
+        deactivate_cmd[0] = find_executable(deactivate_cmd[0])
     environ = os.environ.copy()
     with TemporaryDirectory(prefix="pyproject-external-conda-activator-") as tmp_path:
         tmp_path = Path(tmp_path)
@@ -187,7 +197,7 @@ def activated_conda_env(
 def _catch_activation_errors(activate: bool = True) -> Iterable[None]:
     try:
         yield
-    except subprocess.CalledProcessError as exc:
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         raise RuntimeError(
             f"Could not {'activate' if activate else 'deactivate'} conda environment!\n"
             f"Return code: {exc.returncode}\n"
