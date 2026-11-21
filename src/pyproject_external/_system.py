@@ -158,8 +158,6 @@ def activated_conda_env(
         # real 'activate' command
         with _catch_activation_errors(True):
             hook = subprocess.check_output(activate_cmd, text=True, env=environ)
-        # DEBUG
-        print(hook)
         outputfile = tmp_path / "__output.json"
         hookfile.write_text(
             f"{call}{hook}\n"
