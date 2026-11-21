@@ -93,6 +93,11 @@ def activated_conda_env(
     """
     if not prefix:
         prefix = os.environ.get("CONDA_PREFIX", sys.prefix)
+    if not Path(prefix, "conda-meta", "history").is_file():
+        raise ValueError(
+            f"{prefix} is not a conda environment. "
+            "Please activate the correct environment or define CONDA_PREFIX=<path>."
+        )
     if sys.platform == "win32":
         shell = "cmd.exe"
         script_ext = "bat"
@@ -146,9 +151,6 @@ def activated_conda_env(
     if deactivate_cmd:
         deactivate_cmd[0] = find_executable(deactivate_cmd[0])
     environ = os.environ.copy()
-    # DEBUG
-    print(activate_cmd)
-    print(deactivate_cmd)
     with TemporaryDirectory(prefix="pyproject-external-conda-activator-") as tmp_path:
         tmp_path = Path(tmp_path)
         hookfile = tmp_path / f"__hook.{script_ext}"
