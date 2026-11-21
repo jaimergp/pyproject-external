@@ -478,7 +478,7 @@ class External:
         # Let overrides take precedence
         # TODO: Experimental, undocumented approach. Missing per-'specs_type' overrides
         if overrides_str := os.environ.get("_PYPROJECT_EXTERNAL_MAPPING_OVERRIDES"):
-            for purl, overrides in json.loads(overrides_str):
+            for purl, overrides in json.loads(overrides_str).items():
                 if purl == dep_str:
                     if isinstance(overrides, str) and overrides:
                         overrides = [overrides]
